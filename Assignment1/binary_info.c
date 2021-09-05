@@ -87,39 +87,102 @@ void h(char *blob) {
 
 }
 
-void sectionNames(char *blob) {
-    printf(".shrstrtab section names: \n");
-
+void printSectionNameFromNameOffset(int offset, char *blob) {
     if (osBits == 1) {
         //32 bit
         int shrstrSectionHeaderOffset = header32->e_shoff + (header32->e_shstrndx*sizeof(Elf32_Shdr));
         Elf32_Shdr *secHdr;
-        secHdr = &blob[shrstrSectionHeaderOffset];
-        for (int i = 0; i < secHdr->sh_size; i++) {
-            char c = blob[secHdr->sh_offset+i];
-            printf("%c", c);
-            if (c == 0) {
-                printf("\n");
+        secHdr = &blob[shrstrSectionHeaderOffset]; //the shstrtab section header
+
+        //iterate byte by byte over str table until its found
+        // <idx> null terminators. The next string is the indicated section name
+        int i = 0;
+        while (1){
+            char c = blob[secHdr->sh_offset+offset+i];
+            if (c == 0){
+                break;
             }
+            printf("%c", c);
+            i++;
         }
+
     } else {
         //64 bit
         int shrstrSectionHeaderOffset = header64->e_shoff + (header64->e_shstrndx*sizeof(Elf64_Shdr));
         Elf64_Shdr *secHdr;
-        secHdr = &blob[shrstrSectionHeaderOffset];
-        for (int i = 0; i < secHdr->sh_size; i++) {
-            char c = blob[secHdr->sh_offset+i];
-            printf("%c", c);
-            if (c == 0) {
-                printf("\n");
+        secHdr = &blob[shrstrSectionHeaderOffset]; //the shstrtab section header
+
+        //iterate byte by byte over str table until its found
+        // <idx> null terminators. The next string is the indicated section name
+        int i = 0;
+        while (1){
+            char c = blob[secHdr->sh_offset+offset+i];
+            if (c == 0){
+                break;
             }
+            printf("%c", c);
+            i++;
         }
-        
     }
-    
+}
+
+void sectionNames(char *blob) {
+    printf(".shrstrtab section names: \n");
+
+    if (osBits == 1){
+        //32 bits
+        for (int i = 0; i < header32->e_shnum; i++){
+            Elf32_Shdr *secHdr;
+            secHdr = &blob[header32->e_shoff + i * sizeof(Elf32_Shdr)];
+            printSectionNameFromNameOffset(secHdr->sh_name, blob);
+            printf("\n");
+        }
+
+    } else {
+        //64 bits
+        for (int i = 0; i < header64->e_shnum; i++){
+            Elf64_Shdr *secHdr;
+            secHdr = &blob[header64->e_shoff + i * sizeof(Elf64_Shdr)];
+            printSectionNameFromNameOffset(secHdr->sh_name, blob);
+            printf("\n");
+        }
+    }
 }
 
 void sections(char *blob) {
+    
+    if (osBits == 1) {
+        //32 bits
+        printf("There are %d section headers beginning at address 0x%x\n", header32->e_shnum, header32->e_shoff);
+        for(int i = 0; i < header32->e_shnum; i++){
+            //pull out the correct header
+            Elf32_Shdr *secHdr;
+            secHdr = &blob[header32->e_shoff + i * sizeof(Elf32_Shdr)];
+            printf("[%d] ", i);
+            printSectionNameFromNameOffset(secHdr->sh_name, blob); printf(" ");
+            printf("%s ", sectionType[secHdr->sh_type]);
+            printf("%x ", secHdr->sh_addr);
+            printf("%x ", secHdr->sh_offset);
+            printf("%x", secHdr->sh_size);
+            printf("\n");//line break
+        }
+    } else {
+        //64 bits
+        printf("There are %d section headers beginning at address 0x%lx\n", header64->e_shnum, header64->e_shoff);
+        for(int i = 0; i < header64->e_shnum; i++){
+            //pull out the correct header
+            Elf64_Shdr *secHdr;
+            secHdr = &blob[header64->e_shoff + i * sizeof(Elf64_Shdr)];
+            printf("[%d] ", i);
+            printSectionNameFromNameOffset(secHdr->sh_name, blob); printf(" ");
+            printf("%s ", sectionType[secHdr->sh_type]);
+            printf("%lx ", secHdr->sh_addr);
+            printf("%lx ", secHdr->sh_offset);
+            printf("%lx", secHdr->sh_size);
+            printf("\n");//line break
+        }
+
+    }
     
 }
 
