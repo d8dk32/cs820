@@ -1,8 +1,7 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include "/usr/include/elf.h"
 #include "lookup_tables.h"
+
+//define some variables that are set upon loading the file and are used repeatedly
+//in every other function
 
 int osBits;
 int endianness;
@@ -10,6 +9,7 @@ int endianness;
 Elf32_Ehdr *header32;
 Elf64_Ehdr *header64;
 
+//utility function for printg the magic, hex encoded
 void printMagic(unsigned char magic[16]){
     for (int i = 0; i < 16; i++){
         printf("%x ", magic[i]);
@@ -17,6 +17,7 @@ void printMagic(unsigned char magic[16]){
     printf("\n");
 }
 
+// load the file into a blob in memory
 char* loadFile(const char *filename) {
     FILE *f = fopen(filename, "rb");
     if (f) {
@@ -46,6 +47,8 @@ char* loadFile(const char *filename) {
     }
 }
 
+// prints the header. identical functionality for 32 vs 64 bits, 
+//just split to accomodate differences in data structures defined in elf.h
 void h(char *blob) {
 
     if (osBits == 1) {
@@ -53,7 +56,7 @@ void h(char *blob) {
         printMagic(header32->e_ident);
         printf("Bits: %s\n", fileClass[osBits]);
         printf("Endianness: %s\n", dataEncoding[endianness]); 
-        printf("Obj. File Type: %s\n", objFileType[header32->e_type]);
+        printf("Obj. File Type: %s\n", objFileType(header32->e_type));
         printf("Version: %x\n", header32->e_version);
         printf("Entry Point Addr.: %x\n", header32->e_entry);
         printf("Program Header Offset: %d\n", header32->e_phoff);
@@ -71,7 +74,7 @@ void h(char *blob) {
         printMagic(header64->e_ident);
         printf("Bits: %s\n", fileClass[osBits]);
         printf("Endianness: %s\n", dataEncoding[endianness]); 
-        printf("Obj. File Type: %s\n", objFileType[header64->e_type]);  
+        printf("Obj. File Type: %s\n", objFileType(header64->e_type));  
         printf("Version: %x\n", header64->e_version);
         printf("Entry Point Addr.: %lx\n", header64->e_entry);
         printf("Program Header Offset: %ld\n", header64->e_phoff);
@@ -93,36 +96,14 @@ void printSectionNameFromNameOffset(int offset, char *blob) {
         int shrstrSectionHeaderOffset = header32->e_shoff + (header32->e_shstrndx*sizeof(Elf32_Shdr));
         Elf32_Shdr *secHdr;
         secHdr = &blob[shrstrSectionHeaderOffset]; //the shstrtab section header
-
-        //iterate byte by byte over str table until its found
-        // <idx> null terminators. The next string is the indicated section name
-        int i = 0;
-        while (1){
-            char c = blob[secHdr->sh_offset+offset+i];
-            if (c == 0){
-                break;
-            }
-            printf("%c", c);
-            i++;
-        }
+        printf("%s", &blob[secHdr->sh_offset+offset]);
 
     } else {
         //64 bit
         int shrstrSectionHeaderOffset = header64->e_shoff + (header64->e_shstrndx*sizeof(Elf64_Shdr));
         Elf64_Shdr *secHdr;
         secHdr = &blob[shrstrSectionHeaderOffset]; //the shstrtab section header
-
-        //iterate byte by byte over str table until its found
-        // <idx> null terminators. The next string is the indicated section name
-        int i = 0;
-        while (1){
-            char c = blob[secHdr->sh_offset+offset+i];
-            if (c == 0){
-                break;
-            }
-            printf("%c", c);
-            i++;
-        }
+        printf("%s", &blob[secHdr->sh_offset+offset]);
     }
 }
 
@@ -160,7 +141,7 @@ void sections(char *blob) {
             secHdr = &blob[header32->e_shoff + i * sizeof(Elf32_Shdr)];
             printf("[%d] ", i);
             printSectionNameFromNameOffset(secHdr->sh_name, blob); printf(" ");
-            printf("%s ", sectionType[secHdr->sh_type]);
+            printf("%s ", sectionType(secHdr->sh_type));
             printf("%x ", secHdr->sh_addr);
             printf("%x ", secHdr->sh_offset);
             printf("%x", secHdr->sh_size);
@@ -175,7 +156,7 @@ void sections(char *blob) {
             secHdr = &blob[header64->e_shoff + i * sizeof(Elf64_Shdr)];
             printf("[%d] ", i);
             printSectionNameFromNameOffset(secHdr->sh_name, blob); printf(" ");
-            printf("%s ", sectionType[secHdr->sh_type]);
+            printf("%s ", sectionType(secHdr->sh_type));
             printf("%lx ", secHdr->sh_addr);
             printf("%lx ", secHdr->sh_offset);
             printf("%lx", secHdr->sh_size);
@@ -187,11 +168,93 @@ void sections(char *blob) {
 }
 
 void sectionFlags(char *blob) {
-    
+    if (osBits == 1) {
+        //32 bits
+        for(int i = 0; i < header32->e_shnum; i++){
+            //pull out the correct header
+            Elf32_Shdr *secHdr;
+            secHdr = &blob[header32->e_shoff + i * sizeof(Elf32_Shdr)];
+            printSectionNameFromNameOffset(secHdr->sh_name, blob); printf(" ");
+            printFlags32(secHdr->sh_flags);
+            printf("\n");//line break
+        }
+    } else {
+        //64 bits
+        for(int i = 0; i < header64->e_shnum; i++){
+            //pull out the correct header
+            Elf64_Shdr *secHdr;
+            secHdr = &blob[header64->e_shoff + i * sizeof(Elf64_Shdr)];
+            printSectionNameFromNameOffset(secHdr->sh_name, blob); printf(" ");
+            printFlags64(secHdr->sh_flags);
+            printf("\n");//line break
+        }
+
+    }
+}
+
+//retrieves a section header by name (string literal)
+//note: probably will segfault if there is no section with the specified name
+Elf32_Shdr* getSectionHeaderByName32(char* name, char* blob){
+    Elf32_Shdr* retval;
+    //32 bits
+    for(int i = 0; i < header64->e_shnum; i++){
+        //pull out each section header
+        Elf32_Shdr *secHdr;
+        secHdr = &blob[header32->e_shoff + i * sizeof(Elf32_Shdr)];
+        
+        //get that section's name
+        int shrstrSectionHeaderOffset = header32->e_shoff + (header32->e_shstrndx*sizeof(Elf32_Shdr));
+        Elf32_Shdr *shstrSecHdr;
+        shstrSecHdr = &blob[shrstrSectionHeaderOffset]; 
+        char* secName = &blob[shstrSecHdr->sh_offset + secHdr->sh_name];
+        printf("testing sec name %s\n", secName);
+
+        //comapare the names, return the section if it matches
+        if (strcmp(name, secName) == 0) {
+            retval = secHdr;
+            break;
+        }
+    }
+
+    return retval;
+}
+
+//retrieves a section header by name (string literal)
+//note: probably will segfault if there is no section with the specified name
+Elf64_Shdr* getSectionHeaderByName64(char* name, char* blob){
+    Elf64_Shdr* retval;
+    //64 bits
+    for(int i = 0; i < header64->e_shnum; i++){
+        //pull out each section header
+        Elf64_Shdr *secHdr;
+        secHdr = &blob[header64->e_shoff + i * sizeof(Elf64_Shdr)];
+        
+        //get that section's name
+        int shrstrSectionHeaderOffset = header64->e_shoff + (header64->e_shstrndx*sizeof(Elf64_Shdr));
+        Elf64_Shdr *shstrSecHdr;
+        shstrSecHdr = &blob[shrstrSectionHeaderOffset]; 
+        char* secName = &blob[shstrSecHdr->sh_offset + secHdr->sh_name];
+        printf("testing sec name %s\n", secName);
+
+        //comapare the names, return the section if it matches
+        if (strcmp(name, secName) == 0) {
+            retval = secHdr;
+            break;
+        }
+    }
+
+    return retval;
 }
 
 void symtabNames(char *blob) {
-    
+    Elf64_Shdr* symtabHdr = getSectionHeaderByName64(".symtab", blob);
+    long numEntries = symtabHdr->sh_size/symtabHdr->sh_entsize;
+    printf("Symbol table '.symtab' contains %ld entries:\n", numEntries);
+    for(int i = 0; i < numEntries; i++){
+        Elf64_Sym* entry;
+        entry = &blob[symtabHdr->sh_offset + i*sizeof(Elf64_Sym)];
+        printf("Value: %lx, Size: %ld\n", entry->st_value, entry->st_size);
+    }
 }
 
 void dynsymNames(char *blob) {
