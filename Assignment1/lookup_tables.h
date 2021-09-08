@@ -92,3 +92,42 @@ static const char* printFlags32(Elf32_Word code) {
     if (code & (1<<11)) printf("COMPRESSED ");
     //other values are undefined or os-specific, probably won't see them
 }
+
+static const char* printStType(unsigned char val){
+    val = ELF32_ST_TYPE(val);
+    char* stTypeArr[8] = {
+        "NOTYPE",
+        "OBJECT",
+        "FUNC",
+        "SECTION",
+        "FILE",
+        "COMMON",
+        "TLS",
+        "NUM"
+    };
+    if (val > 7) return "OS/PROC";
+    return stTypeArr[val];
+}
+
+static const char* printStBind(unsigned char val){
+    val = ELF32_ST_BIND(val);
+    char* stBindArr[4] = {
+        "LOCAL",
+        "GLOBAL",
+        "WEAK",
+        "NUM"
+    };
+    if (val > 3) return "OS/PROC";
+    return stBindArr[val];
+}
+
+static const char* printStVis(unsigned char val) {
+    val = ELF32_ST_VISIBILITY(val);
+    char* visArr[4] = {
+        "DEFAULT",
+        "INTERNAL",
+        "HIDDEN",
+        "PROTECTED"
+    };
+    return visArr[val];
+}

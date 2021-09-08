@@ -207,7 +207,6 @@ Elf32_Shdr* getSectionHeaderByName32(char* name, char* blob){
         Elf32_Shdr *shstrSecHdr;
         shstrSecHdr = &blob[shrstrSectionHeaderOffset]; 
         char* secName = &blob[shstrSecHdr->sh_offset + secHdr->sh_name];
-        printf("testing sec name %s\n", secName);
 
         //comapare the names, return the section if it matches
         if (strcmp(name, secName) == 0) {
@@ -247,13 +246,30 @@ Elf64_Shdr* getSectionHeaderByName64(char* name, char* blob){
 }
 
 void symtabNames(char *blob) {
-    Elf64_Shdr* symtabHdr = getSectionHeaderByName64(".symtab", blob);
-    long numEntries = symtabHdr->sh_size/symtabHdr->sh_entsize;
-    printf("Symbol table '.symtab' contains %ld entries:\n", numEntries);
-    for(int i = 0; i < numEntries; i++){
-        Elf64_Sym* entry;
-        entry = &blob[symtabHdr->sh_offset + i*sizeof(Elf64_Sym)];
-        printf("Value: %lx, Size: %ld\n", entry->st_value, entry->st_size);
+    if(osBits == 1) {
+        //32 bits
+        Elf32_Shdr* symtabHdr = getSectionHeaderByName32(".symtab", blob);
+        Elf32_Shdr* strtabHdr = getSectionHeaderByName32(".strtab", blob);
+        long numEntries = symtabHdr->sh_size/symtabHdr->sh_entsize;
+        printf("Symbol table '.symtab' contains %ld entries:\n", numEntries);
+        printf("Num  %10s %10s %10s %10s %10s %10s %10s\n", "Value", "Size", "Type", "Bind", "Vis", "Ndx", "Name");
+        for(int i = 0; i < numEntries; i++){
+            Elf32_Sym* entry;
+            entry = &blob[symtabHdr->sh_offset + i*sizeof(Elf32_Sym)];
+            printf("%4d %10lx %10ld, %10s %10s %10s %10d %10s\n", i, entry->st_value, entry->st_size, printStType(entry->st_info), printStBind(entry->st_info), printStVis(entry->st_other), entry->st_shndx,  &blob[strtabHdr->sh_offset + entry->st_name]);
+        }
+    } else {
+        //64 bits
+        Elf64_Shdr* symtabHdr = getSectionHeaderByName64(".symtab", blob);
+        Elf64_Shdr* strtabHdr = getSectionHeaderByName64(".strtab", blob);
+        long numEntries = symtabHdr->sh_size/symtabHdr->sh_entsize;
+        printf("Symbol table '.symtab' contains %ld entries:\n", numEntries);
+        printf("Num  %10s %10s %10s %10s %10s %10s %10s\n", "Value", "Size", "Type", "Bind", "Vis", "Ndx", "Name");
+        for(int i = 0; i < numEntries; i++){
+            Elf64_Sym* entry;
+            entry = &blob[symtabHdr->sh_offset + i*sizeof(Elf64_Sym)];
+            printf("%4d %10lx %10ld, %10s %10s %10s %10d %10s\n", i, entry->st_value, entry->st_size, printStType(entry->st_info), printStBind(entry->st_info), printStVis(entry->st_other), entry->st_shndx,  &blob[strtabHdr->sh_offset + entry->st_name]);
+        }
     }
 }
 
