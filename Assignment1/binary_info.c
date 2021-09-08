@@ -259,11 +259,11 @@ Elf64_Shdr* getSectionHeaderByName64(char* name, char* blob){
     return retval;
 }
 
-void symtabNames(char *blob, char* symTabName) {
+void symtabNames(char *blob, char* symTabName, char* strTabName) {
     if(osBits == 1) {
         //32 bits
         Elf32_Shdr* symtabHdr = getSectionHeaderByName32(symTabName, blob);
-        Elf32_Shdr* strtabHdr = getSectionHeaderByName32(".strtab", blob);
+        Elf32_Shdr* strtabHdr = getSectionHeaderByName32(strTabName, blob);
         long numEntries = symtabHdr->sh_size/symtabHdr->sh_entsize;
         printf("Symbol table '%s' contains %ld entries:\n", symTabName, numEntries);
         printf("Num  %10s %10s %10s %10s %10s %10s %10s\n", "Value", "Size", "Type", "Bind", "Vis", "Ndx", "Name");
@@ -275,7 +275,7 @@ void symtabNames(char *blob, char* symTabName) {
     } else {
         //64 bits
         Elf64_Shdr* symtabHdr = getSectionHeaderByName64(symTabName, blob);
-        Elf64_Shdr* strtabHdr = getSectionHeaderByName64(".strtab", blob);
+        Elf64_Shdr* strtabHdr = getSectionHeaderByName64(strTabName, blob);
         long numEntries = symtabHdr->sh_size/symtabHdr->sh_entsize;
         printf("Symbol table '%s' contains %ld entries:\n", symTabName, numEntries);
         printf("Num  %10s %10s %10s %10s %10s %10s %10s\n", "Value", "Size", "Type", "Bind", "Vis", "Ndx", "Name");
@@ -321,10 +321,10 @@ int main(int argc, char** argv) {
         sectionFlags(blob);
     } else if (strcmp(argv[2], "--symtab_names") == 0) {
         //dump of .symtab symbol table
-        symtabNames(blob, ".symtab");
+        symtabNames(blob, ".symtab", ".strtab");
     } else if (strcmp(argv[2], "--dynsym_names") == 0) {
         //dump of .dynsym symbol table
-        symtabNames(blob, ".dynsym");
+        symtabNames(blob, ".dynsym", ".dynstr");
     } else if (strcmp(argv[2], "--dynamic") == 0) {
         //dump of .dynamic section
         dynamic(blob);
