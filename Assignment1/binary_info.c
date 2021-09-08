@@ -24,11 +24,24 @@ char* loadFile(const char *filename) {
         printf("File: %s\n", filename);
         fseek(f, 0, SEEK_END);
         long size = ftell(f);
+        if (size < 4) {
+            //file is way too small to possibly be an ELF file so just bail here
+            //to avoid seg faults later
+            fprintf(stderr, "File '%s' does not match ELF specification.\n", filename); 
+            exit(-1);
+        }
         char *blob = malloc(size);
         fseek(f, 0, SEEK_SET);
         fread(blob, size, 1, f);
         fclose(f);
 
+        //check to make sure file is *probably* a valid ELF file
+        //ensure it has at least 4 bits, and those first 4 bits are '0x7FELF'
+        //this is obviously not foolproof but probably is good enough for this assignment
+        if (size < 4 || blob[0] != 0x7F || blob[1] != 0x45 || blob[2] != 0x4c || blob[3] != 0x46) {
+            fprintf(stderr, "File '%s' does not match ELF specification.\n", filename); 
+            exit(-1);
+        }
         //gonna need these headers no mattaer what, so save them off when
         //loading the file
         osBits = blob[EI_CLASS]; 
@@ -42,7 +55,7 @@ char* loadFile(const char *filename) {
 
         return blob;
     } else {
-        fprintf(stderr, "File %s could not be opened.\n", filename); 
+        fprintf(stderr, "File '%s' could not be opened.\n", filename); 
         exit(-1);
     }
 }
@@ -211,10 +224,11 @@ Elf32_Shdr* getSectionHeaderByName32(char* name, char* blob){
         //comapare the names, return the section if it matches
         if (strcmp(name, secName) == 0) {
             retval = secHdr;
-            break;
+            return retval;
         }
     }
-
+    //if the section isn't found, we're just gonna bail.
+    exit(1);
     return retval;
 }
 
@@ -233,37 +247,37 @@ Elf64_Shdr* getSectionHeaderByName64(char* name, char* blob){
         Elf64_Shdr *shstrSecHdr;
         shstrSecHdr = &blob[shrstrSectionHeaderOffset]; 
         char* secName = &blob[shstrSecHdr->sh_offset + secHdr->sh_name];
-        printf("testing sec name %s\n", secName);
 
         //comapare the names, return the section if it matches
         if (strcmp(name, secName) == 0) {
             retval = secHdr;
-            break;
+            return retval;
         }
     }
-
+    //if the section isn't found, we're just gonna bail.
+    exit(1);
     return retval;
 }
 
-void symtabNames(char *blob) {
+void symtabNames(char *blob, char* symTabName) {
     if(osBits == 1) {
         //32 bits
-        Elf32_Shdr* symtabHdr = getSectionHeaderByName32(".symtab", blob);
+        Elf32_Shdr* symtabHdr = getSectionHeaderByName32(symTabName, blob);
         Elf32_Shdr* strtabHdr = getSectionHeaderByName32(".strtab", blob);
         long numEntries = symtabHdr->sh_size/symtabHdr->sh_entsize;
-        printf("Symbol table '.symtab' contains %ld entries:\n", numEntries);
+        printf("Symbol table '%s' contains %ld entries:\n", symTabName, numEntries);
         printf("Num  %10s %10s %10s %10s %10s %10s %10s\n", "Value", "Size", "Type", "Bind", "Vis", "Ndx", "Name");
         for(int i = 0; i < numEntries; i++){
             Elf32_Sym* entry;
             entry = &blob[symtabHdr->sh_offset + i*sizeof(Elf32_Sym)];
-            printf("%4d %10lx %10ld, %10s %10s %10s %10d %10s\n", i, entry->st_value, entry->st_size, printStType(entry->st_info), printStBind(entry->st_info), printStVis(entry->st_other), entry->st_shndx,  &blob[strtabHdr->sh_offset + entry->st_name]);
+            printf("%4d %10x %10d, %10s %10s %10s %10d %10s\n", i, entry->st_value, entry->st_size, printStType(entry->st_info), printStBind(entry->st_info), printStVis(entry->st_other), entry->st_shndx,  &blob[strtabHdr->sh_offset + entry->st_name]);
         }
     } else {
         //64 bits
-        Elf64_Shdr* symtabHdr = getSectionHeaderByName64(".symtab", blob);
+        Elf64_Shdr* symtabHdr = getSectionHeaderByName64(symTabName, blob);
         Elf64_Shdr* strtabHdr = getSectionHeaderByName64(".strtab", blob);
         long numEntries = symtabHdr->sh_size/symtabHdr->sh_entsize;
-        printf("Symbol table '.symtab' contains %ld entries:\n", numEntries);
+        printf("Symbol table '%s' contains %ld entries:\n", symTabName, numEntries);
         printf("Num  %10s %10s %10s %10s %10s %10s %10s\n", "Value", "Size", "Type", "Bind", "Vis", "Ndx", "Name");
         for(int i = 0; i < numEntries; i++){
             Elf64_Sym* entry;
@@ -271,10 +285,6 @@ void symtabNames(char *blob) {
             printf("%4d %10lx %10ld, %10s %10s %10s %10d %10s\n", i, entry->st_value, entry->st_size, printStType(entry->st_info), printStBind(entry->st_info), printStVis(entry->st_other), entry->st_shndx,  &blob[strtabHdr->sh_offset + entry->st_name]);
         }
     }
-}
-
-void dynsymNames(char *blob) {
-    
 }
 
 void dynamic(char *blob) {
@@ -310,11 +320,11 @@ int main(int argc, char** argv) {
         //list section names and flag value
         sectionFlags(blob);
     } else if (strcmp(argv[2], "--symtab_names") == 0) {
-        //dump of .symtab table
-        symtabNames(blob);
+        //dump of .symtab symbol table
+        symtabNames(blob, ".symtab");
     } else if (strcmp(argv[2], "--dynsym_names") == 0) {
         //dump of .dynsym symbol table
-        dynsymNames(blob);
+        symtabNames(blob, ".dynsym");
     } else if (strcmp(argv[2], "--dynamic") == 0) {
         //dump of .dynamic section
         dynamic(blob);
