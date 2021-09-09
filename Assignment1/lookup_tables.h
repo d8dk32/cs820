@@ -175,11 +175,47 @@ TagType basicTagArr[34] = {
     {"PREINIT_ARRAYSZ", 0}
 };
 
+//32 bit uses an int32_t, hoping it upcasts.
+TagType handleValRng(int64_t tag) {
+    TagType tagType;
+    tagType.valOrPtr = 0; //since this is in the 'val' range, they all end up 0 for du_un.d_val
+}
+
+TagType handleAddrRng(int64_t tag) {
+    TagType tagType;
+    tagType.valOrPtr = 1; //since this is in the 'val' range, they all end up 0 for du_un.d_val
+}
+
+static const char* printDynEntryType32(Elf32_Dyn* entry){
+
+    TagType tagType;
+    if (entry->d_tag < 34) {
+        tagType = basicTagArr[entry->d_tag];
+    } else if (entry->d_tag > DT_VALRNGLO && entry->d_tag < DT_VALRNGHI) {
+        tagType = handleValRng(entry->d_tag);
+    } else if (entry->d_tag > DT_VALRNGLO && entry->d_tag < DT_VALRNGHI) {
+        tagType = handleAddrRng(entry->d_tag);
+    } else {
+        //unhandled type code
+        tagType.typeStr = "XXXXXX";
+        tagType.valOrPtr = 1;
+    }
+    if(tagType.valOrPtr == 0) {
+        printf("0x%016x %16s %16d\n", entry->d_tag, tagType.typeStr, entry->d_un.d_val);
+    } else if (tagType.valOrPtr == 1) {
+        printf("0x%016x %16s 0x%016x\n", entry->d_tag, tagType.typeStr, entry->d_un.d_ptr);
+    }
+}
+
 static const char* printDynEntryType64(Elf64_Dyn* entry){
 
     TagType tagType;
     if (entry->d_tag < 34) {
         tagType = basicTagArr[entry->d_tag];
+    } else if (entry->d_tag > DT_VALRNGLO && entry->d_tag < DT_VALRNGHI) {
+        tagType = handleValRng(entry->d_tag);
+    } else if (entry->d_tag > DT_VALRNGLO && entry->d_tag < DT_VALRNGHI) {
+        tagType = handleAddrRng(entry->d_tag);
     } else {
         //unhandled type code
         tagType.typeStr = "XXXXXX";
