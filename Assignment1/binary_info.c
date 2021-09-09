@@ -288,6 +288,20 @@ void symtabNames(char *blob, char* symTabName, char* strTabName) {
 }
 
 void dynamic(char *blob) {
+    if (osBits == 1){
+        //32 bit
+    } else {
+        //64 bit
+        Elf64_Shdr* dynamicHdr = getSectionHeaderByName64(".dynamic", blob);
+        long numEntries = dynamicHdr->sh_size/dynamicHdr->sh_entsize;
+        printf(".dynamic section at offset %lx contains %ld entries:\n", dynamicHdr->sh_offset, numEntries);
+        printf("%16s %16s %16s", "Tag", "Type", "Name/Value\n");
+        for(int i = 0; i < numEntries; i++){
+            Elf64_Dyn* entry;
+            entry = &blob[dynamicHdr->sh_offset + i*sizeof(Elf64_Dyn)];
+            printDynEntryType64(entry);
+        }
+    }
     
 }
 

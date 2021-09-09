@@ -131,3 +131,63 @@ static const char* printStVis(unsigned char val) {
     };
     return visArr[val];
 }
+
+typedef struct {
+    char* typeStr;
+    int valOrPtr;
+} TagType;
+
+//this array relates legal (integer) values for d_tag (dynamic entry type) to a 
+//string describing the type, and whether they use d_un.d_val (0) or .d_ptr(1)
+TagType basicTagArr[34] = {
+    {"NULL", 1},
+    {"NEEDED", 0},
+    {"PLTRELSZ", 0},
+    {"PLTGOT", 0},
+    {"HASH", 1},
+    {"STRTAB", 1},
+    {"SYMTAB", 1},
+    {"RELA", 1},
+    {"RELASZ", 0},
+    {"RELAENT", 0},
+    {"STRSZ", 0},
+    {"SYMENT", 0},
+    {"INIT", 1},
+    {"FINI", 1},
+    {"SONAME", 0},
+    {"RPATH", 0},
+    {"SYMBOLIC", 0},
+    {"REL", 1},
+    {"RELSZ", 0},
+    {"RELENT", 0},
+    {"PLTREL", 0},
+    {"DEBUG", 0},
+    {"TEXTREL", 0},
+    {"JMPREL", 1},
+    {"BIND_NOW", 0},
+    {"INIT_ARRAY", 1},
+    {"FINI_ARRAY", 1},
+    {"INIT_ARRAYSZ", 0},
+    {"FINI_ARRAYSZ", 0},
+    {"RUNPATH", 0},
+    {"FLAGS", 0},
+    {"ENCODING", 1},
+    {"PREINIT_ARRAYSZ", 0}
+};
+
+static const char* printDynEntryType64(Elf64_Dyn* entry){
+
+    TagType tagType;
+    if (entry->d_tag < 34) {
+        tagType = basicTagArr[entry->d_tag];
+    } else {
+        //unhandled type code
+        tagType.typeStr = "XXXXXX";
+        tagType.valOrPtr = 1;
+    }
+    if(tagType.valOrPtr == 0) {
+        printf("0x%016lx %16s %16ld\n", entry->d_tag, tagType.typeStr, entry->d_un.d_val);
+    } else if (tagType.valOrPtr == 1) {
+        printf("0x%016lx %16s 0x%016lx\n", entry->d_tag, tagType.typeStr, entry->d_un.d_ptr);
+    }
+}
