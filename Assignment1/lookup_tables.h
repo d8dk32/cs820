@@ -141,7 +141,7 @@ typedef struct {
 //string describing the type, and whether they use d_un.d_val (0) or .d_ptr(1)
 TagType basicTagArr[34] = {
     {"NULL", 1},
-    {"NEEDED", 0},
+    {"NEEDED", 2},
     {"PLTRELSZ", 0},
     {"PLTGOT", 0},
     {"HASH", 1},
@@ -154,7 +154,7 @@ TagType basicTagArr[34] = {
     {"SYMENT", 0},
     {"INIT", 1},
     {"FINI", 1},
-    {"SONAME", 0},
+    {"SONAME", 2},
     {"RPATH", 0},
     {"SYMBOLIC", 0},
     {"REL", 1},
@@ -169,7 +169,7 @@ TagType basicTagArr[34] = {
     {"FINI_ARRAY", 1},
     {"INIT_ARRAYSZ", 0},
     {"FINI_ARRAYSZ", 0},
-    {"RUNPATH", 0},
+    {"RUNPATH", 2},
     {"FLAGS", 0},
     {"ENCODING", 1},
     {"PREINIT_ARRAYSZ", 0}
@@ -179,51 +179,128 @@ TagType basicTagArr[34] = {
 TagType handleValRng(int64_t tag) {
     TagType tagType;
     tagType.valOrPtr = 0; //since this is in the 'val' range, they all end up 0 for du_un.d_val
+    tagType.typeStr = "<unknown>"; //default to this for unmapped types
+
+    if (tag == DT_GNU_PRELINKED) tagType.typeStr = "GNU_PRELINKED";
+    if (tag == DT_GNU_CONFLICTSZ) tagType.typeStr = "GNU_CONFLICTSZ";
+    if (tag == DT_GNU_LIBLISTSZ) tagType.typeStr = "GNU_LIBLISTSZ";
+    if (tag == DT_CHECKSUM) tagType.typeStr = "CHECKSUM";
+    if (tag == DT_PLTPADSZ) tagType.typeStr = "PLTPADSZ";
+    if (tag == DT_MOVEENT) tagType.typeStr = "MOVEENT";
+    if (tag == DT_MOVESZ) tagType.typeStr = "MOVESZ";
+    if (tag == DT_FEATURE_1) tagType.typeStr = "FEATURE_1";
+    if (tag == DT_POSFLAG_1) tagType.typeStr = "POSFLAG_1";
+    if (tag == DT_SYMINSZ) tagType.typeStr = "SYMINSZ";
+    if (tag == DT_SYMINENT) tagType.typeStr = "SYMINENT";
+
+    return tagType;
 }
 
 TagType handleAddrRng(int64_t tag) {
     TagType tagType;
     tagType.valOrPtr = 1; //since this is in the 'val' range, they all end up 0 for du_un.d_val
+    tagType.typeStr = "<unknown>"; //default to this for unmapped types
+
+    if (tag == DT_GNU_HASH) tagType.typeStr = "GNU_HASH";
+    if (tag == DT_TLSDESC_PLT) tagType.typeStr = "TLSDESC_PLT";
+    if (tag == DT_TLSDESC_GOT) tagType.typeStr = "TLSDESC_GOT";
+    if (tag == DT_GNU_CONFLICT) tagType.typeStr = "GNU_CONFLICT";
+    if (tag == DT_GNU_LIBLIST) tagType.typeStr = "GNU_LIBLIST";
+    if (tag == DT_CONFIG) tagType.typeStr = "CONFIG";
+    if (tag == DT_DEPAUDIT) tagType.typeStr = "DEPAUDIT";
+    if (tag == DT_AUDIT) tagType.typeStr = "AUDIT";
+    if (tag == DT_PLTPAD) tagType.typeStr = "PLTPAD";
+    if (tag == DT_MOVETAB) tagType.typeStr = "MOVETAB";
+    if (tag == DT_SYMINFO) tagType.typeStr = "SYMINFO";
+
+    return tagType;
 }
 
-static const char* printDynEntryType32(Elf32_Dyn* entry){
+TagType handleMiscellaneousTags(int64_t tag) {
+    TagType tagType;
+    tagType.typeStr = "<unknown>";
+    tagType.valOrPtr = 0;
+
+    if (tag == DT_VERSYM) {
+        tagType.typeStr = "VERSYM";
+        tagType.valOrPtr = 0;
+    }
+    if (tag == DT_RELACOUNT) {
+        tagType.typeStr = "RELACOUNT";
+        tagType.valOrPtr = 0;
+    }
+    if (tag == DT_RELCOUNT) {
+        tagType.typeStr = "RELCOUNT";
+        tagType.valOrPtr = 0;
+    }
+    if (tag == DT_FLAGS_1) {
+        tagType.typeStr = "FLAGS_1";
+        tagType.valOrPtr = 0;
+    }
+    if (tag == DT_VERDEF) {
+        tagType.typeStr = "VERDEF";
+        tagType.valOrPtr = 1;
+    }
+    if (tag == DT_VERDEFNUM) {
+        tagType.typeStr = "VERDEFNUM";
+        tagType.valOrPtr = 0;
+    }
+    if (tag == DT_VERNEED) {
+        tagType.typeStr = "VERNEED";
+        tagType.valOrPtr = 1;
+    }
+    if (tag == DT_VERNEEDNUM) {
+        tagType.typeStr = "VERNEEDNUM";
+        tagType.valOrPtr = 0;
+    }
+    
+    return tagType;    
+}
+
+static const char* printDynEntryType32(Elf32_Dyn* entry, Elf32_Shdr* dynstrHdr, char* blob){
 
     TagType tagType;
+
     if (entry->d_tag < 34) {
         tagType = basicTagArr[entry->d_tag];
     } else if (entry->d_tag > DT_VALRNGLO && entry->d_tag < DT_VALRNGHI) {
         tagType = handleValRng(entry->d_tag);
-    } else if (entry->d_tag > DT_VALRNGLO && entry->d_tag < DT_VALRNGHI) {
+    } else if (entry->d_tag > DT_ADDRRNGLO && entry->d_tag < DT_ADDRRNGHI) {
         tagType = handleAddrRng(entry->d_tag);
     } else {
-        //unhandled type code
-        tagType.typeStr = "XXXXXX";
-        tagType.valOrPtr = 1;
+        tagType = handleMiscellaneousTags(entry->d_tag);
     }
+
     if(tagType.valOrPtr == 0) {
         printf("0x%016x %16s %16d\n", entry->d_tag, tagType.typeStr, entry->d_un.d_val);
     } else if (tagType.valOrPtr == 1) {
         printf("0x%016x %16s 0x%016x\n", entry->d_tag, tagType.typeStr, entry->d_un.d_ptr);
+    } else if (tagType.valOrPtr == 2) {
+        //special case: it's val, but the val is an index into a string table and we want the string
+        printf("0x%016x %16s %16s\n", entry->d_tag, tagType.typeStr, &blob[dynstrHdr->sh_offset + entry->d_un.d_val]);
     }
 }
 
-static const char* printDynEntryType64(Elf64_Dyn* entry){
+static const char* printDynEntryType64(Elf64_Dyn* entry, Elf64_Shdr* dynstrHdr, char* blob){
 
     TagType tagType;
+
     if (entry->d_tag < 34) {
         tagType = basicTagArr[entry->d_tag];
     } else if (entry->d_tag > DT_VALRNGLO && entry->d_tag < DT_VALRNGHI) {
         tagType = handleValRng(entry->d_tag);
-    } else if (entry->d_tag > DT_VALRNGLO && entry->d_tag < DT_VALRNGHI) {
+    } else if (entry->d_tag > DT_ADDRRNGLO && entry->d_tag < DT_ADDRRNGHI) {
         tagType = handleAddrRng(entry->d_tag);
     } else {
-        //unhandled type code
-        tagType.typeStr = "XXXXXX";
-        tagType.valOrPtr = 1;
+       tagType = handleMiscellaneousTags(entry->d_tag);
     }
+
     if(tagType.valOrPtr == 0) {
         printf("0x%016lx %16s %16ld\n", entry->d_tag, tagType.typeStr, entry->d_un.d_val);
     } else if (tagType.valOrPtr == 1) {
         printf("0x%016lx %16s 0x%016lx\n", entry->d_tag, tagType.typeStr, entry->d_un.d_ptr);
+    } else if (tagType.valOrPtr == 2) {
+        //special case: it's val, but the val is an index into a string table and we want the string
+        printf("0x%016lx %16s %16s\n", entry->d_tag, tagType.typeStr, &blob[dynstrHdr->sh_offset + entry->d_un.d_val]);
     }
 }
