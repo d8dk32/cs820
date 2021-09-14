@@ -210,7 +210,7 @@ void sectionFlags(char *blob) {
 Elf32_Shdr* getSectionHeaderByName32(char* name, char* blob){
     Elf32_Shdr* retval;
     //32 bits
-    for(int i = 0; i < header64->e_shnum; i++){
+    for(int i = 0; i < header32->e_shnum; i++){
         //pull out each section header
         Elf32_Shdr *secHdr;
         secHdr = &blob[header32->e_shoff + i * sizeof(Elf32_Shdr)];
@@ -316,6 +316,14 @@ void dynamic(char *blob) {
     
 }
 
+void programHeaders(char* blob) {
+
+}
+
+void segmentByName(char* blob, char* segName) {
+    printf("Hex dump of section '%s':\n", segName);
+}
+
 int main(int argc, char** argv) {
 
     //handle incorrect numbers of args
@@ -329,30 +337,34 @@ int main(int argc, char** argv) {
     }
 
     //argv[0] is program name, so first 'real' param is at [1]
-    char *blob = loadFile(argv[1]);
+    char *blob = loadFile(argv[2]);
 
     //handle option flags
-    if (strcmp(argv[2], "-h") == 0) {
+    if (strcmp(argv[1], "-h") == 0) {
         //display header info
         h(blob);
-    } else if (strcmp(argv[2], "--section_names") == 0) {
+    } else if (strcmp(argv[1], "--section_names") == 0) {
         //dump contents of .shstrtab section 
         sectionNames(blob);
-    } else if (strcmp(argv[2], "--sections") == 0) {
+    } else if (strcmp(argv[1], "--sections") == 0) {
         //list section headers
         sections(blob);
-    } else if (strcmp(argv[2], "--section_flags") == 0) {
+    } else if (strcmp(argv[1], "--section_flags") == 0) {
         //list section names and flag value
         sectionFlags(blob);
-    } else if (strcmp(argv[2], "--symtab_names") == 0) {
+    } else if (strcmp(argv[1], "--symtab_names") == 0) {
         //dump of .symtab symbol table
         symtabNames(blob, ".symtab", ".strtab");
-    } else if (strcmp(argv[2], "--dynsym_names") == 0) {
+    } else if (strcmp(argv[1], "--dynsym_names") == 0) {
         //dump of .dynsym symbol table
         symtabNames(blob, ".dynsym", ".dynstr");
-    } else if (strcmp(argv[2], "--dynamic") == 0) {
+    } else if (strcmp(argv[1], "--dynamic") == 0) {
         //dump of .dynamic section
         dynamic(blob);
+    } else if (strcmp(argv[1], "--program_headers") == 0){
+        programHeaders(blob);
+    } else if (memcmp(argv[1], "--segment.", 10) == 0) {
+        segmentByName(blob, argv[1]+10);
     } else {
         fprintf(stderr, "Invalid option flag.\n");
         return -1;
