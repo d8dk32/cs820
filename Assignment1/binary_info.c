@@ -317,7 +317,24 @@ void dynamic(char *blob) {
 }
 
 void programHeaders(char* blob) {
+    if (osBits == 1) {
+        //32 bits
+        for(int i = 0; i < header32->e_phnum; i++) {
+            //iterate over program headers
+        }
+    } else {
+        //64 bits
+        printf("Entry point 0x%lx\n", header64->e_entry);
+        printf("There are %d program headers starting at offset %ld\n", header64->e_phnum, header64->e_phoff);
+        printf("Program headers:\n");
+        printf("%16s %16s %16s %16s %16s %16s %16s %16s\n", "Type", "Offset", "Virt.Addr.", "Phys.Addr.", "Filesize", "Memsize", "Flag", "Align");
+        for(int i = 0; i < header64->e_phnum; i++) {
+            //iterate over program headers
+            Elf64_Phdr* progHdr;
+            progHdr = &blob[header64->e_phoff + i*sizeof(Elf64_Phdr)];
 
+        }
+    }
 }
 
 void segmentByName(char* blob, char* segName) {
