@@ -206,7 +206,6 @@ void sectionFlags(char *blob) {
 }
 
 //retrieves a section header by name (string literal)
-//note: probably will segfault if there is no section with the specified name
 Elf32_Shdr* getSectionHeaderByName32(char* name, char* blob){
     Elf32_Shdr* retval;
     //32 bits
@@ -233,7 +232,6 @@ Elf32_Shdr* getSectionHeaderByName32(char* name, char* blob){
 }
 
 //retrieves a section header by name (string literal)
-//note: probably will segfault if there is no section with the specified name
 Elf64_Shdr* getSectionHeaderByName64(char* name, char* blob){
     Elf64_Shdr* retval;
     //64 bits
@@ -321,6 +319,12 @@ void programHeaders(char* blob) {
         //32 bits
         for(int i = 0; i < header32->e_phnum; i++) {
             //iterate over program headers
+            Elf32_Phdr* progHdr;
+            progHdr = &blob[header32->e_phoff + i*sizeof(Elf32_Phdr)];
+            printf("%16s 0x%016x 0x%016x 0x%016x 0x%016x 0x%016x %16s 0x%016x\n",
+            parseProgHdrType32(progHdr->p_type), progHdr->p_offset, progHdr->p_vaddr,
+            progHdr->p_paddr, progHdr->p_filesz, progHdr->p_memsz, 
+            parseProgHdrFlags32(progHdr->p_flags), progHdr->p_align);
         }
     } else {
         //64 bits
@@ -332,13 +336,78 @@ void programHeaders(char* blob) {
             //iterate over program headers
             Elf64_Phdr* progHdr;
             progHdr = &blob[header64->e_phoff + i*sizeof(Elf64_Phdr)];
-
+            printf("%16s 0x%016lx 0x%016lx 0x%016lx 0x%016lx 0x%016lx %16s 0x%016lx\n",
+            parseProgHdrType64(progHdr->p_type), progHdr->p_offset, progHdr->p_vaddr,
+            progHdr->p_paddr, progHdr->p_filesz, progHdr->p_memsz, 
+            parseProgHdrFlags64(progHdr->p_flags), progHdr->p_align);
         }
     }
 }
 
 void segmentByName(char* blob, char* segName) {
-    printf("Hex dump of section '%s':\n", segName);
+    if (osBits == 1) {
+        //32Bit
+        Elf32_Shdr* secHdr = getSectionHeaderByName32(segName, blob);
+        printf("Hex dump of section '%s':\n", segName);
+        int byteCounter = 0;
+        int rowsSoFar = 0;
+        while (byteCounter < secHdr->sh_size) {
+            //read byte by byte
+            printf("0x%016x   ", secHdr->sh_offset + rowsSoFar*16);
+            int bytesCollected = 0;
+            char asciiRow[] = {46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 0}; //................\0
+            while (bytesCollected < 16 && byteCounter < secHdr->sh_size) {
+                char curByte = blob[secHdr->sh_offset + byteCounter];
+                printf("%02x ", curByte);
+                if (curByte > 31 && curByte < 127) {
+                    asciiRow[bytesCollected] = curByte;
+                }
+                bytesCollected++;
+                byteCounter++;
+            }
+            while(bytesCollected < 16) {
+                //this section will happen when it didn't read thru a whole 16byte row
+                //before it reached the end of the section. print out some blank space
+                //to keep everything lined up nice.
+                printf("   ");
+                bytesCollected++;
+            }
+            printf("   %s\n", asciiRow);
+            rowsSoFar++;
+        }
+
+    } else {
+        //64 bit
+        Elf64_Shdr* secHdr = getSectionHeaderByName64(segName, blob);
+        printf("Hex dump of section '%s':\n", segName);
+        int byteCounter = 0;
+        int rowsSoFar = 0;
+        while (byteCounter < secHdr->sh_size) {
+            //read byte by byte
+            printf("0x%016lx   ", secHdr->sh_offset + rowsSoFar*16);
+            int bytesCollected = 0;
+            char asciiRow[] = {46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 0}; //................\0
+            while (bytesCollected < 16 && byteCounter < secHdr->sh_size) {
+                char curByte = blob[secHdr->sh_offset + byteCounter];
+                printf("%02x ", curByte);
+                if (curByte > 31 && curByte < 127) {
+                    asciiRow[bytesCollected] = curByte;
+                }
+                bytesCollected++;
+                byteCounter++;
+            }
+            while(bytesCollected < 16) {
+                //this section will happen when it didn't read thru a whole 16byte row
+                //before it reached the end of the section. print out some blank space
+                //to keep everything lined up nice.
+                printf("   ");
+                bytesCollected++;
+            }
+            printf("   %s\n", asciiRow);
+            rowsSoFar++;
+        }
+
+    }
 }
 
 int main(int argc, char** argv) {

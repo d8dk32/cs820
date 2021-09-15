@@ -304,3 +304,57 @@ static const char* printDynEntryType64(Elf64_Dyn* entry, Elf64_Shdr* dynstrHdr, 
         printf("0x%016lx %16s %16s\n", entry->d_tag, tagType.typeStr, &blob[dynstrHdr->sh_offset + entry->d_un.d_val]);
     }
 }
+
+static const char* parseProgHdrType64(Elf64_Word type) {
+    char* basicTypes[9] = { 
+        "NULL",
+        "LOAD",
+        "DYNAMIC",
+        "INTERP",
+        "NOTE",
+        "SHLIB",
+        "PHDR",
+        "TLS",
+        "NUM"
+    };
+    if ( type < 9) {
+        return basicTypes[type];
+    } else if (type == 0x6474e550) {
+        return "GNU_EH_FRAME";
+    } else if (type == 0x6474e551) {
+        return "GNU_STACK";
+    } else if (type == 0x6474e551) {
+        return "GNU_STACK";
+    } else if (type == 0x6474e552) {
+        return "GNU_RELRO";
+    } else if (type == 0x6ffffffa) {
+        return "SUNWBSS";
+    } else if (type == 0x6ffffffb) {
+        return "SUNWSTACK";
+    } else return "OS SPECIFIC";
+}
+
+static const char* parseProgHdrType32(Elf32_Word type) {
+    return parseProgHdrType64((Elf64_Word) type);
+}
+
+static const char* parseProgHdrFlags64(Elf64_Word flags) {
+    char* flagCombos[8] = {
+        " ",  //000
+        "X",  //001
+        "W",  //010
+        "WX", //011
+        "R",  //100
+        "RX", //101
+        "RW", //110
+        "RWX" //111
+    };
+    if (flags < 8) {
+        return flagCombos[flags];
+    }
+    return "OS SPECIFIC"; 
+}
+
+static const char* parseProgHdrFlags32(Elf32_Word flags) {
+    return parseProgHdrFlags64((Elf64_Word) flags);
+}
