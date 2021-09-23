@@ -1,4 +1,5 @@
 #include "dataTypes.h"
+#include <stdio.h>
 
 char* opcodeNames[] = {
     "halt",
@@ -91,4 +92,4 @@ void (*instrFormatHandlers[26])(Word, int) = {
     opReg,
     opReg,
     opReg
-}
+};
