@@ -3,6 +3,11 @@
 #include <string.h>
 #include "opcodeHandlers.h"
 
+/*
+a simple disassembler for the vmx20 toy vm assembler
+*/
+
+
 // load the file into a blob in memory
 char* loadFile(const char *filename) {
     FILE *f = fopen(filename, "rb");
@@ -61,17 +66,13 @@ int main(int argc, char** argv) {
     Word outSymLen = readWord(objFile, 4);
     Word objCodeLen = readWord(objFile, 8);
 
-    printf("insym len: %d\n", inSymLen);
-    printf("outsym len: %d\n", outSymLen);
-    printf("objcode len: %d\n", objCodeLen);
-
     //start of obj code is at 12 bytses (to account for the 3 section-length Words that start the file) 
     //   + lengths of in- and out-symbol sections
     Word *objCode = getObjCodeAsWordArray(objFile, 12 + (inSymLen*4) + (outSymLen*4), objCodeLen );
 
     for(int i = 0; i < objCodeLen; i++) {
-        int opcodeArrIdx = 0x000F & objCode[i];
-        printf("code word: %08x, opcode: %s\n", objCode[i], opcodeNames[opcodeArrIdx]);
+        int opcode = 0x000000FF & objCode[i];
+        (*instrFormatHandlers[opcode])(objCode[i], i+1); //+1 because the program counter will have incremented
     }
 
     return 0;
