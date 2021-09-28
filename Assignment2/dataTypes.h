@@ -11,3 +11,8 @@ typedef struct {
     int offset;
     int constant;
 } Instruction;
+
+typedef struct {
+    Word name[4];
+    Word addr;
+} Symbol;

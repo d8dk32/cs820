@@ -2,6 +2,8 @@ export sum
 export top
 export done
 
+import poo
+
 jmp skipData
 sum:
 	word 0
@@ -28,4 +30,5 @@ top:
 	jmp	top
 done:
 	store	r3, sum
+	call poo
 	halt
