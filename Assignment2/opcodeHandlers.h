@@ -1,5 +1,9 @@
 #include "dataTypes.h"
 
+//2's complementer utility function. supports 20 bit and 16 bit (really n-bit where n < 32) lengths
+
+int twosComplementer(int value, int numBits);
+
 //functions for handling each instruction format
 
 void op(Word instr, int pc);

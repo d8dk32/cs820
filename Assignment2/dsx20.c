@@ -54,6 +54,36 @@ Word* getObjCodeAsWordArray(char* blob, Word codeStartAddr, Word numCodeWords) {
     return objCode;
 }
 
+void dumpEveryByte(char* blob, int numBytes) {
+    for (int i = 0; i < numBytes; i +=4){
+        printf("%x %x %x %x\n", blob[i], blob[i+1], blob[i+2], blob[i+3]);
+    }
+}
+
+void printSymbolSection(char* blob, Word symSectionLen, Word secStartAddr) {
+    int numSymbols = symSectionLen/5;
+    for(int i = 0; i < numSymbols; i++){
+        for(int b = 0; b < 16; b++) {
+            //16 chars (4 words) permitted for symbol names
+            char c = blob[secStartAddr+(20*i)+b];
+            //printf("%x ", c);
+            printf("%c", c);
+        }
+        Word symAddr = readWord(blob, secStartAddr+(20*i)+16);
+        printf(" %d\n", symAddr);//don't need to 2s comp this cause they're always positive?
+    }
+}
+
+void printInSymbolSection(char* blob, Word symSectionLen, Word secStartAddr) {
+    printf("\nInsymbol section (%d entries): \n\n", symSectionLen/5);
+    printSymbolSection(blob, symSectionLen, secStartAddr);
+}
+
+void printOutSymbolSection(char* blob, Word symSectionLen, Word secStartAddr) {
+    printf("\nOutsymbol section (%d entries): \n\n", symSectionLen/5);
+    printSymbolSection(blob, symSectionLen, secStartAddr);
+}
+
 int main(int argc, char** argv) {
 
     if (argc != 2) {
@@ -66,13 +96,24 @@ int main(int argc, char** argv) {
     Word outSymLen = readWord(objFile, 4);
     Word objCodeLen = readWord(objFile, 8);
 
+    //dumpEveryByte(objFile, 12+(inSymLen*4)+(outSymLen*4)+(objCodeLen*4));
+
+    printInSymbolSection(objFile, inSymLen, 12);
+    printOutSymbolSection(objFile, outSymLen, 12+(inSymLen*4));
+
+    printf("\nObject Code (%d words): \n\n", objCodeLen);
     //start of obj code is at 12 bytses (to account for the 3 section-length Words that start the file) 
     //   + lengths of in- and out-symbol sections
     Word *objCode = getObjCodeAsWordArray(objFile, 12 + (inSymLen*4) + (outSymLen*4), objCodeLen );
 
     for(int i = 0; i < objCodeLen; i++) {
         int opcode = 0x000000FF & objCode[i];
-        (*instrFormatHandlers[opcode])(objCode[i], i+1); //+1 because the program counter will have incremented
+        if(opcode < 26) {
+            (*instrFormatHandlers[opcode])(objCode[i], i+1); //+1 because the program counter will have incremented
+        } else {
+            //the opcode is invalid so this must be data
+            printf("%07d   %08x UNKNOWN", i, objCode[i]);
+        }
     }
 
     return 0;
