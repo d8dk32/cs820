@@ -22,7 +22,7 @@ skipData:
         ldimm   r3, 0		# r3 is the running sum
         ldimm	r4, 1		# r4 always contains 1, the loop increment
 top:
-	beq	r0, r1, done	# loop exit condition
+	beq	r0, r1, poo	# loop exit condition
 	ldind	r5, 0(r2)	# fetch vector[i]
         addi	r3, r5		# add it to the sum
         addi	r2, r4		# increment pointer
