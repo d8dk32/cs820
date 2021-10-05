@@ -13,6 +13,15 @@ typedef struct {
 } Instruction;
 
 typedef struct {
-    Word name[4];
+    char *name;
     Word addr;
 } Symbol;
+
+typedef struct {
+    int numInSymbols;
+    int numOutSymbols;
+    int objCodeLen;
+    Symbol* inSymbols;
+    Symbol* outSymbols;
+    Word* objCode;
+} ObjFile;
