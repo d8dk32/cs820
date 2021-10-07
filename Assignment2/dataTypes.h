@@ -24,4 +24,5 @@ typedef struct {
     Symbol* inSymbols;
     Symbol* outSymbols;
     Word* objCode;
+    int offset;
 } ObjFile;
