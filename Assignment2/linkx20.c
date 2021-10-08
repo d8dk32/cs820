@@ -73,6 +73,11 @@ void readSymbolSection(char* blob, Word numSymbols, Word secStartAddr, Symbol* s
     }
 }
 
+//TODO: the real version of this function, with reverse 2s complementing and shit
+Word updateCodeWordAddr(Word codeWord, int pcRelativeAddr){
+    return codeWord;
+}
+
 int main(int argc, char** argv) {
 
     if (argc == 1) {
@@ -115,16 +120,16 @@ int main(int argc, char** argv) {
         }
         
         //uncomment to dump file info------------------------------------------------------
-        printf("%s -----------\n", argv[i+1]);
-        printf("offset: %d, numInSym: %d, numOutSym: %d, objCodeLen: %d \n", objFiles[i].offset, objFiles[i].numInSymbols, objFiles[i].numOutSymbols, objFiles[i].objCodeLen);
-        printf("insymbols: \n");
-        for(int j = 0; j < objFiles[i].numInSymbols; j++) {
-            printf("%s: %d\n", objFiles[i].inSymbols[j].name, objFiles[i].inSymbols[j].addr);
-        }
-        printf("outsymbols:\n");
-        for(int j = 0; j < objFiles[i].numOutSymbols; j++) {
-            printf("%s: %d\n", objFiles[i].outSymbols[j].name, objFiles[i].outSymbols[j].addr);
-        }
+        // printf("%s -----------\n", argv[i+1]);
+        // printf("offset: %d, numInSym: %d, numOutSym: %d, objCodeLen: %d \n", objFiles[i].offset, objFiles[i].numInSymbols, objFiles[i].numOutSymbols, objFiles[i].objCodeLen);
+        // printf("insymbols: \n");
+        // for(int j = 0; j < objFiles[i].numInSymbols; j++) {
+        //     printf("%s: %d\n", objFiles[i].inSymbols[j].name, objFiles[i].inSymbols[j].addr);
+        // }
+        // printf("outsymbols:\n");
+        // for(int j = 0; j < objFiles[i].numOutSymbols; j++) {
+        //     printf("%s: %d\n", objFiles[i].outSymbols[j].name, objFiles[i].outSymbols[j].addr);
+        // }
     }
 
     if (mainx20Exists == 0) {
@@ -148,6 +153,36 @@ int main(int argc, char** argv) {
     }
 
     //resolve outsymbols
+    for (int i = 0; i < numInputFiles; i++){ //iterate over input files
+        for(; objFiles[i].numOutSymbols > 0; objFiles[i].numOutSymbols--){ //iterate over all the outsymbols, 'removing' them once resolved 
+            int outsymResolved = 0;
+            for(int j = 0; j < numInputFiles; j++){
+                for(int k = 0; k < objFiles[j].numInSymbols; k++){
+                    int curOutsymIdx = objFiles[i].numOutSymbols-1;
+                    int inSymMatch = strcmp(objFiles[i].outSymbols[curOutsymIdx].name, objFiles[j].inSymbols[k].name);
+                    if (inSymMatch == 0) {
+                        //a matching insymbol was found, this outsymbol has been resolved
+                        outsymResolved = 1;
+                        //update address portion of the code word at the outsymbol's location
+                        int insymAddr = objFiles[j].inSymbols[k].addr;
+                        int curOutsymAddr = objFiles[i].outSymbols[curOutsymIdx].addr; //really the pc at the outsymbol's reference in this file
+                        Word updatedCodeWord = updateCodeWordAddr(objFiles[i].objCode[curOutsymAddr], insymAddr - (objFiles[i].offset+curOutsymAddr+1));
+                        objFiles[i].objCode[curOutsymAddr] = updatedCodeWord;
+                        //and then bail
+                        break;
+                    }
+                }
+                if(outsymResolved == 1){
+                        break;
+                }
+            }
+            if (outsymResolved == 0){
+                //outsymbol could not be resolved. so error out
+                fprintf(stderr, "Could not resolve outsymbol '%s'. Linking Failed.\n", objFiles[i].outSymbols[objFiles[i].numOutSymbols-1].name);
+                exit(1);
+            }
+        }
+    }
 
     
 
