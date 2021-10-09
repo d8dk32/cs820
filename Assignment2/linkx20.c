@@ -75,7 +75,41 @@ void readSymbolSection(char* blob, Word numSymbols, Word secStartAddr, Symbol* s
 
 //TODO: the real version of this function, with reverse 2s complementing and shit
 Word updateCodeWordAddr(Word codeWord, int pcRelativeAddr){
+
+    int mask = 0x00000FFF;
+    int shift = 12;
+    int opcode = 0x000000FF & codeWord; 
+
+    //these are all the opcodes that could use a smaller-sized addr field
+    if (opcode == 5 || opcode == 6 || opcode == 17 || opcode == 18 || opcode == 19 || opcode == 21) {
+        //blt, bgt, beq opcodes
+        mask = 0x0000FFFF;
+        shift = 16;
+    }
+
+    //don't need to to mess around with 2's complement or anything
+    // just clean out the address chunk (i think it should be already?) and paste in the new address
+    codeWord = (mask & codeWord) | (pcRelativeAddr << shift);
+
     return codeWord;
+}
+
+void writeWord(Word outWord, FILE* outFile){
+    unsigned char byte1 = 0x000000FF & outWord;
+    unsigned char byte2 = (0x0000FF00 & outWord) >> 8;
+    unsigned char byte3 = (0x00FF0000 & outWord) >> 16;
+    unsigned char byte4 = (0xFF000000 & outWord) >> 24;
+
+    unsigned char wordArr[4] = {byte1, byte2, byte3, byte4};
+    fwrite(wordArr, sizeof(unsigned char), sizeof(wordArr), outFile);
+}
+
+void writeSymbol(Symbol sym, FILE* outFile){
+    //write the symbol name
+    for(int i = 0; i < 16; i++){
+        fwrite(&sym.name[i], sizeof(char), sizeof(char), outFile);
+    }
+    writeWord(sym.addr, outFile);
 }
 
 int main(int argc, char** argv) {
@@ -91,7 +125,7 @@ int main(int argc, char** argv) {
 
     int numInputFiles = dashOFlag == 0 ? argc-3 : argc-1;
 
-    printf("num. input files: %d\n", numInputFiles);
+    //printf("num. input files: %d\n", numInputFiles);
 
     if (numInputFiles == 0) {
         fprintf(stderr, "At least 1 object file must be specified.\n");
@@ -184,7 +218,48 @@ int main(int argc, char** argv) {
         }
     }
 
+    //uncomment to dump each file's code, for checking correctness of modified addresses
+    // for(int i = 0; i < numInputFiles; i++){
+    //     printf("%s -----------\n", argv[i+1]);
+    //     for(int j = 0; j < objFiles[i].objCodeLen; j++){
+    //         printf("0x%8x\n", objFiles[i].objCode[j]);
+    //     }
+    // }
+
+    //now assemble the whole deal into an output executable file
+    //open the file
+    FILE *outFile = fopen(exeFileName, "wb+"); // write only
+    if (outFile == NULL) {
+        printf("Failed to open output file '%s'.\n", exeFileName);
+        exit(1);
+    }
+    //output header
+    Word sumInSyms = 0;
+    Word sumObjCodeLen = 0;
+    for(int i = 0; i < numInputFiles; i++){
+        sumInSyms += objFiles[i].numInSymbols;
+        sumObjCodeLen += objFiles[i].objCodeLen;
+    }
+    writeWord(sumInSyms*5, outFile);
+    writeWord(0, outFile);
+    writeWord(sumObjCodeLen, outFile);
     
+    //output in-symbols. No need for out-symbols, cause if we've made it this far there aren't any more.
+    for(int i = 0; i < numInputFiles; i++){
+        for(int j = 0; j < objFiles[i].numInSymbols; j++){
+            writeSymbol(objFiles[i].inSymbols[j], outFile);
+        }
+    }
+    
+    //output code
+    for(int i = 0; i < numInputFiles; i++){
+        for(int j = 0; j < objFiles[i].objCodeLen; j++){
+            writeWord(objFiles[i].objCode[j], outFile);
+        }
+    }
+
+    //close the file
+    fclose(outFile);
 
 
 

@@ -54,9 +54,10 @@ int twosComplementer(int value, int numBits){
     // so 2^N - X = 2sComp(x)
     int twoToTheN = 1 << numBits;
     int twosComp = value-twoToTheN; 
+    return twosComp;
 }
 
-int checkInsymbols(int addr, int pc) {
+int checkInsymbols(int addr, int pc) { //should this be called checkOutsymbols? whatver, not gonna refactor now...
     for(int i = 0; i < numOutSymbols; i++ ){
         if (addr == 0 && pc-1 == outsymbolAddrs[i]){
             return 1;

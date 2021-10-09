@@ -1,5 +1,5 @@
-export mainx20
 export x2
+export mainx20
 jmp mainx20
 x1: 
     word 0
