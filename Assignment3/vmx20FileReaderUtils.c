@@ -60,8 +60,7 @@ char* loadFile(const char *filename) {
 
         return blob;
     } else {
-        fprintf(stderr, "File '%s' could not be opened.\n", filename); 
-        exit(-1);
+        return NULL;
     }
 }
 
