@@ -1,11 +1,13 @@
 #include "vmx20FileReaderUtils.h"
 #include "vmx20.h"
+#include "opHandlers.h"
 
 #define FP 13
 #define SP 14
 #define PC 15
 
 ObjFile *currentExecutable;
+int (*instructionHandlers[26])(Word, int, union Register**, ObjFile *); 
 
 int loadExecutableFile(char *filename, int *errorNumber) {
 
@@ -99,14 +101,56 @@ int execute(unsigned int numProcessors, unsigned int initialSP[], int terminatio
     //begin the fetch/execute loop
     int haltExec = 0;
     while (haltExec < 1) {
+
         //just using a single processor for now but eventually we'll need to do multiprocessing as well
         Word *op;
         int _b = getWord(r[0][PC].ui, op);
         r[0][PC].ui += 1;
+
         //process the opcode
+        int opcode = 0x000000FF & *op;
+        if (opcode > 25) {
+            return VMX20_ILLEGAL_INSTRUCTION;
+        }
+
+        int execRetVal = (*instructionHandlers[opcode])(*op, 0, r, currentExecutable);
+
+        if (execRetVal < 1){
+            //error code returned
+            return execRetVal;
+        }
 
     }
     
     return 1;
 }
+
+int (*instructionHandlers[26])(Word, int, union Register**, ObjFile *) = {
+    halt,
+    load,
+    store,
+    ldimm,
+    ldaddr,
+    ldind,
+    stind,
+    addf,
+    subf,
+    divf,
+    mulf,
+    addi,
+    subi,
+    divi,
+    muli,
+    call,
+    ret,
+    blt,
+    bgt,
+    beq,
+    jmp,
+    cmpxchg,
+    getpid,
+    getpn,
+    push,
+    pop
+};
 

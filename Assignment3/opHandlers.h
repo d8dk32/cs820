@@ -1,13 +1,58 @@
+#ifndef _OP_HANDLERS_
+#define _OP_HANDLERS_
+
 #include "dataTypes.h"
 
-//VMX20 error code analogues
-#define NORMAL_TERMINATION 0
-#define DIVIDE_BY_ZERO -1
-#define ADDRESS_OUT_OF_RANGE -2
-#define ILLEGAL_INSTRUCTION -3
+int halt(Word instr, int pid, union Register** r, ObjFile *curExec);
 
-int halt(Word instr, int pid, union Register** r, ObjFile *curExec){
-    return NORMAL_TERMINATION;
-}
+int load(Word instr, int pid, union Register** r, ObjFile *curExec);
 
-int 
+int store(Word instr, int pid, union Register** r, ObjFile *curExec);
+
+int ldimm(Word instr, int pid, union Register** r, ObjFile *curExec);
+
+int ldaddr(Word instr, int pid, union Register** r, ObjFile *curExec);
+
+int ldind(Word instr, int pid, union Register** r, ObjFile *curExec);
+
+int stind(Word instr, int pid, union Register** r, ObjFile *curExec);
+
+int addf(Word instr, int pid, union Register** r, ObjFile *curExec);
+
+int subf(Word instr, int pid, union Register** r, ObjFile *curExec);
+
+int divf(Word instr, int pid, union Register** r, ObjFile *curExec);
+
+int mulf(Word instr, int pid, union Register** r, ObjFile *curExec);
+
+int addi(Word instr, int pid, union Register** r, ObjFile *curExec);
+
+int subi(Word instr, int pid, union Register** r, ObjFile *curExec);
+
+int divi(Word instr, int pid, union Register** r, ObjFile *curExec);
+
+int muli(Word instr, int pid, union Register** r, ObjFile *curExec);
+
+int call(Word instr, int pid, union Register** r, ObjFile *curExec);
+
+int ret(Word instr, int pid, union Register** r, ObjFile *curExec);
+
+int blt(Word instr, int pid, union Register** r, ObjFile *curExec);
+
+int bgt(Word instr, int pid, union Register** r, ObjFile *curExec);
+
+int beq(Word instr, int pid, union Register** r, ObjFile *curExec);
+
+int jmp(Word instr, int pid, union Register** r, ObjFile *curExec);
+
+int cmpxchg(Word instr, int pid, union Register** r, ObjFile *curExec);
+
+int getpid(Word instr, int pid, union Register** r, ObjFile *curExec);
+
+int getpn(Word instr, int pid, union Register** r, ObjFile *curExec);
+
+int push(Word instr, int pid, union Register** r, ObjFile *curExec);
+
+int pop(Word instr, int pid, union Register** r, ObjFile *curExec);
+
+#endif
