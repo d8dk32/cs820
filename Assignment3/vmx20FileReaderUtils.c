@@ -66,7 +66,7 @@ char* loadFile(const char *filename) {
 
 // take a file loaded into memory as a byte array and parse it into an ObjFile struct
 // for easier use
-ObjFile parseObjFile(char* objFile) {
+ObjFile* parseObjFile(char* objFile) {
 
     ObjFile objFileStruct;
     objFileStruct.numInSymbols = readWord(objFile, 0)/5;
@@ -83,5 +83,5 @@ ObjFile parseObjFile(char* objFile) {
         readSymbolSection(objFile, objFileStruct.numOutSymbols, 12+(objFileStruct.numInSymbols*20), objFileStruct.outSymbols);
     }
     
-    return objFileStruct;
+    return *objFileStruct;
 }

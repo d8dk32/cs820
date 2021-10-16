@@ -1,6 +1,14 @@
+#ifndef _DATA_TYPES_
+#define _DATA_TYPES_
 #include <stdint.h>
 
 typedef uint32_t Word;
+
+union Register {
+        int i;
+        float f;
+        unsigned int ui; //mostly for the PC, maybe FP and SP as well
+};
 
 //a struct with all the different possible fields a vmx20 instruction can have
 typedef struct {
@@ -29,3 +37,5 @@ typedef struct {
     Word* objCode;
     int entryPointAddr;
 } ObjFile;
+
+#endif

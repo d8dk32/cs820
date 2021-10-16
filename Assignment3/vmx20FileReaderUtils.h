@@ -19,6 +19,6 @@ void readSymbolSection(char* blob, Word numSymbols, Word secStartAddr, Symbol* s
 // memory, and then parsed into a useful data structure
 char* loadFile(const char *filename);
 
-ObjFile parseObjFile(char* objFile);
+ObjFile* parseObjFile(char* objFile);
 
 #endif /*VMX20_FILE_READER_UTILS*/
