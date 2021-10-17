@@ -68,20 +68,20 @@ char* loadFile(const char *filename) {
 // for easier use
 ObjFile* parseObjFile(char* objFile) {
 
-    ObjFile objFileStruct;
-    objFileStruct.numInSymbols = readWord(objFile, 0)/5;
-    objFileStruct.numOutSymbols = readWord(objFile, 4)/5;
-    objFileStruct.objCodeLen = readWord(objFile, 8);
-    objFileStruct.inSymbols = malloc(sizeof(Symbol)*objFileStruct.numInSymbols);
-    objFileStruct.outSymbols = malloc(sizeof(Symbol)*objFileStruct.numOutSymbols);
-    objFileStruct.objCode = getObjCodeAsWordArray(objFile, 12 + (objFileStruct.numInSymbols*20) + (objFileStruct.numOutSymbols*20), objFileStruct.objCodeLen);
+    ObjFile *objFileStruct = malloc(sizeof(ObjFile));
+    objFileStruct->numInSymbols = readWord(objFile, 0)/5;
+    objFileStruct->numOutSymbols = readWord(objFile, 4)/5;
+    objFileStruct->objCodeLen = readWord(objFile, 8);
+    objFileStruct->inSymbols = malloc(sizeof(Symbol)*objFileStruct->numInSymbols);
+    objFileStruct->outSymbols = malloc(sizeof(Symbol)*objFileStruct->numOutSymbols);
+    objFileStruct->objCode = getObjCodeAsWordArray(objFile, 12 + (objFileStruct->numInSymbols*20) + (objFileStruct->numOutSymbols*20), objFileStruct->objCodeLen);
 
-    if(objFileStruct.numInSymbols > 0){
-        readSymbolSection(objFile, objFileStruct.numInSymbols, 12, objFileStruct.inSymbols);
+    if(objFileStruct->numInSymbols > 0){
+        readSymbolSection(objFile, objFileStruct->numInSymbols, 12, objFileStruct->inSymbols);
     }
-    if(objFileStruct.numOutSymbols > 0){
-        readSymbolSection(objFile, objFileStruct.numOutSymbols, 12+(objFileStruct.numInSymbols*20), objFileStruct.outSymbols);
+    if(objFileStruct->numOutSymbols > 0){
+        readSymbolSection(objFile, objFileStruct->numOutSymbols, 12+(objFileStruct->numInSymbols*20), objFileStruct->outSymbols);
     }
     
-    return *objFileStruct;
+    return objFileStruct;
 }
