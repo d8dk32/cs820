@@ -13,8 +13,8 @@ union Register {
 //a struct with all the different possible fields a vmx20 instruction can have
 typedef struct {
     int opcode;
-    int reg1;
-    int reg2;
+    union Register reg1;
+    union Register reg2;
     int addr;
     int offset;
     union {

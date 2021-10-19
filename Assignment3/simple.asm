@@ -8,7 +8,7 @@ export mainx20
 
 mainx20:
 	jmp skipData
-x1: 	word 0
+x1: 	word 1
 y1: 	word 0
 poo:	word 0
 skipData:

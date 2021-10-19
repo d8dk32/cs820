@@ -3,10 +3,6 @@
 #include "vmx20.h"
 #include "opHandlers.h"
 
-#define FP 13
-#define SP 14
-#define PC 15
-
 ObjFile *currentExecutable;
 int (*instructionHandlers[26])(Word, int, union Register**, ObjFile *); 
 
@@ -101,7 +97,7 @@ int execute(unsigned int numProcessors, unsigned int initialSP[], int terminatio
         Word op;
         int _b = getWord(r[0][PC].ui, &op);
         r[0][PC].ui += 1;
-        printf("Word: %08x\n", op);
+        //printf("Word: %08x\n", op);
         //process the opcode
         int opcode = 0x000000FF & op;
         if (opcode > 25) {

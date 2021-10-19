@@ -3,6 +3,12 @@
 
 #include "dataTypes.h"
 
+#define FP 13
+#define SP 14
+#define PC 15
+
+int twosComplementer(int value, int numBits);
+
 int halt(Word instr, int pid, union Register** r, ObjFile *curExec);
 
 int load(Word instr, int pid, union Register** r, ObjFile *curExec);
