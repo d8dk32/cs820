@@ -6,6 +6,7 @@
 #define FP 13
 #define SP 14
 #define PC 15
+#define MAX_ADDR 262144
 
 int twosComplementer(int value, int numBits);
 

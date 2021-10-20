@@ -20,6 +20,10 @@ int load(Word instr, int pid, union Register** r, ObjFile *curExec){
     int reg1 = 0x0000000F & (instr >> 8);
     int addr =  twosComplementer(instr >> 12, 20);
 
+    if( r[pid][PC].ui+addr > MAX_ADDR){
+        return ADDRESS_OUT_OF_RANGE;
+    }
+
     r[pid][reg1].i = curExec->objCode[ r[pid][PC].ui+addr ];
     printf("    %d loaded into r%d\n", r[pid][reg1].i, reg1);
 
@@ -30,6 +34,10 @@ int store(Word instr, int pid, union Register** r, ObjFile *curExec){
     printf("%08x store\n", instr);
     int reg1 = 0x0000000F & (instr >> 8);
     int addr =  twosComplementer(instr >> 12, 20);
+
+    if( r[pid][PC].ui+addr > MAX_ADDR){
+        return ADDRESS_OUT_OF_RANGE;
+    }
 
     curExec->objCode[ r[pid][PC].ui+addr ] = r[pid][reg1].i;
     printf("    %d stored at %d\n", r[pid][reg1].i, r[pid][PC].ui+addr);
@@ -66,8 +74,12 @@ int ldind(Word instr, int pid, union Register** r, ObjFile *curExec){
     int reg2 = 0x0000000F & (instr >> 12);
     int offset = twosComplementer(instr >> 16, 16);
 
-    r[pid][reg1].i = r[pid][reg2].i + offset;
-    printf("    addr %d loaded into r%d\n", r[pid][reg2].i + offset, reg1);
+    if( r[pid][reg2].i + offset > MAX_ADDR){
+        return ADDRESS_OUT_OF_RANGE;
+    }
+
+    r[pid][reg1].i = curExec->objCode[ r[pid][reg2].i + offset ];
+    printf("    value from addr %d loaded into r%d\n", r[pid][reg2].i + offset, reg1);
 
     return CONTINUE_PROCESSING;
 }
@@ -78,6 +90,10 @@ int stind(Word instr, int pid, union Register** r, ObjFile *curExec){
     int reg1 = 0x0000000F & (instr >> 8);
     int reg2 = 0x0000000F & (instr >> 12);
     int offset = twosComplementer(instr >> 16, 16);
+
+    if( r[pid][reg2].i+offset > MAX_ADDR){
+        return ADDRESS_OUT_OF_RANGE;
+    }
 
     curExec->objCode[ r[pid][reg2].i+offset ] = r[pid][reg1].i;
     printf("    %d stored at %d\n", r[pid][reg1].i, r[pid][reg2].i+offset);

@@ -9,7 +9,6 @@ int main(int argc, char** argv){
 
     int errNum = 666;
     int error = loadExecutableFile(filename, &errNum);
-    printf("err: %d\n", errNum);
 
     if (error != 0){
         printf("File '%s' loaded successfully\n", filename);
@@ -23,4 +22,12 @@ int main(int argc, char** argv){
             printf("Processor %d termination status: %d\n", i, terminationStatus[i]);
         }
     }
+
+    unsigned int outAddr = 0;
+    getAddress("y1", &outAddr);
+    int outWord = 0;
+    getWord(outAddr, &outWord);
+    printf("y1: %d\n", outWord);
+
+
 }

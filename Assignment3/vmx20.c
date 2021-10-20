@@ -97,6 +97,10 @@ int execute(unsigned int numProcessors, unsigned int initialSP[], int terminatio
         Word op;
         int _b = getWord(r[0][PC].ui, &op);
         r[0][PC].ui += 1;
+        if(r[0][PC].ui > MAX_ADDR){
+            terminationStatus[0] = VMX20_ADDRESS_OUT_OF_RANGE;
+            return VMX20_ADDRESS_OUT_OF_RANGE;
+        }
         //printf("Word: %08x\n", op);
         //process the opcode
         int opcode = 0x000000FF & op;
