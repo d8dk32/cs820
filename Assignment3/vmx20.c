@@ -1,7 +1,13 @@
 #include <stdio.h>
-#include "vmx20FileReaderUtils.h"
+//#include "vmx20FileReaderUtils.h"
 #include "vmx20.h"
-#include "opHandlers.h"
+//#include "opHandlers.h"
+
+//some hariy stuff
+#include "opHandlers.c"
+#include "vmx20FileReaderUtils.c"
+
+#define ONE_MB 1024*1024
 
 ObjFile *currentExecutable;
 int (*instructionHandlers[26])(Word, int, union Register**, ObjFile *); 
@@ -39,6 +45,11 @@ int loadExecutableFile(char *filename, int *errorNumber) {
         }
         return 0;
     }
+
+    Word* workingMemory = calloc(ONE_MB, sizeof(char));
+    memcpy(workingMemory, currentExecutable->objCode, sizeof(Word)*currentExecutable->objCodeLen);
+    currentExecutable->objCode = workingMemory;
+
     return 1;
 }
 
@@ -70,6 +81,8 @@ int putWord(unsigned int addr, int word){
 }
 
 int execute(unsigned int numProcessors, unsigned int initialSP[], int terminationStatus[], int trace) {  
+
+    totalNumProcessors = numProcessors;
 
     //init registers
     //Registers can be accessed in the form of r[pid][reg#], so each processor has its own set of registers
