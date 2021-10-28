@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "vmx20.h"
 
 void assertEquals(char* exportedSymbolName, int expectedValue){
@@ -80,7 +81,7 @@ int main(int argc, char** argv){
     assertEquals("mul", 6);
     assertEquals("div", 2);
 
-    //-------Test 2: Floating Point Math--------------------------- 
+    //-------Test 3: Floating Point Math--------------------------- 
     filename = "FloatMath.exe";
     error = loadExecutableFile(filename, &errNum);
 
@@ -111,5 +112,99 @@ int main(int argc, char** argv){
     assertEqualsFloat("sub", 2.0f);
     assertEqualsFloat("mul", 6.0f);
     assertEqualsFloat("div", 2.0f);
+
+    //-------Test 4: Branching---------------------------
+
+    filename = "BranchingTest.exe";
+    error = loadExecutableFile(filename, &errNum);
+
+    unsigned int x = 0;
+    getAddress("x", &x);
+
+    if (error != 0){
+        printf("Executing '%s'------------------------\n", filename);
+        int initSP[] = {1000};
+        int terminationStatus[] = {1};
+        error = execute(1, initSP, terminationStatus, 0);
+        printf("Execution ended--------------------------\n");
+        printf("Execute() output: %d\n", error);
+        for(int i = 0; i < numProcessors; i++){
+            printf("Processor %d termination status: %d\n", i, terminationStatus[i]);
+        }
+    }
+
+    assertEquals("z", 1);
+
+    putWord(x, 2);
+
+    if (error != 0){
+        printf("Executing '%s'------------------------\n", filename);
+        int initSP[] = {1000};
+        int terminationStatus[] = {1};
+        error = execute(1, initSP, terminationStatus, 0);
+        printf("Execution ended--------------------------\n");
+        printf("Execute() output: %d\n", error);
+        for(int i = 0; i < numProcessors; i++){
+            printf("Processor %d termination status: %d\n", i, terminationStatus[i]);
+        }
+    }
+
+    assertEquals("z", 2);
+
+    putWord(x, 1);
+
+    if (error != 0){
+        printf("Executing '%s'------------------------\n", filename);
+        int initSP[] = {1000};
+        int terminationStatus[] = {1};
+        error = execute(1, initSP, terminationStatus, 0);
+        printf("Execution ended--------------------------\n");
+        printf("Execute() output: %d\n", error);
+        for(int i = 0; i < numProcessors; i++){
+            printf("Processor %d termination status: %d\n", i, terminationStatus[i]);
+        }
+    }
+
+    assertEquals("z", 3);
+
+    //-------Test 5: Function Call, Push and Pop---------------------------
+    filename = "TestCallPushAndPop.exe";
+    error = loadExecutableFile(filename, &errNum);
+
+    if (error != 0){
+        printf("Executing '%s'------------------------\n", filename);
+        int initSP[] = {1000};
+        int terminationStatus[] = {1};
+        error = execute(1, initSP, terminationStatus, 1);
+        printf("Execution ended--------------------------\n");
+        printf("Execute() output: %d\n", error);
+        for(int i = 0; i < numProcessors; i++){
+            printf("Processor %d termination status: %d\n", i, terminationStatus[i]);
+        }
+    }
+
+    assertEquals("result", 84);
+    assertEquals("popResult", 1);
+
+    //-------Test 6: Multiprocessing/The Leftover Opcodes - getpid, getpn, cmpxchg------------
+
+    // filename = "TestCallPushAndPop.exe";
+    // error = loadExecutableFile(filename, &errNum);
+
+    // if (error != 0){
+    //     printf("Executing '%s'------------------------\n", filename);
+    //     int initSP[] = {1000};
+    //     int terminationStatus[] = {1};
+    //     error = execute(1, initSP, terminationStatus, 1);
+    //     printf("Execution ended--------------------------\n");
+    //     printf("Execute() output: %d\n", error);
+    //     for(int i = 0; i < numProcessors; i++){
+    //         printf("Processor %d termination status: %d\n", i, terminationStatus[i]);
+    //     }
+    // }
+
+    // assertEquals("result", 84);
+    // assertEquals("popResult", 1);
+
  
 }

@@ -10,7 +10,8 @@
 #define ONE_MB 1024*1024
 
 ObjFile *currentExecutable;
-int (*instructionHandlers[26])(Word, int, union Register**, ObjFile *); 
+int (*instructionHandlers[26])(Word, int, union Register**, ObjFile *, int); 
+void (*instrFormatHandlers[26])(Word, int, char*);
 
 int loadExecutableFile(char *filename, int *errorNumber) {
 
@@ -80,6 +81,40 @@ int putWord(unsigned int addr, int word){
     return 1;
 }
 
+
+int threadWorker(int pid, union Register** r, int terminationStatus[], int trace){
+    //begin the fetch/execute loop
+    while (1) {
+
+        //just using a single processor for now but eventually we'll need to do multiprocessing as well
+        Word op;
+        int _b = getWord(r[pid][PC].ui, &op);
+
+        r[pid][PC].ui += 1;
+        if(r[pid][PC].ui > MAX_ADDR){
+            terminationStatus[pid] = VMX20_ADDRESS_OUT_OF_RANGE;
+            return VMX20_ADDRESS_OUT_OF_RANGE;
+        }
+
+        //printf("Word: %08x\n", op);
+        //process the opcode
+        int opcode = 0x000000FF & op;
+        if (opcode > 25) {
+            terminationStatus[pid] = VMX20_ILLEGAL_INSTRUCTION;
+            return VMX20_ILLEGAL_INSTRUCTION;
+        }
+
+        int execRetVal = (*instructionHandlers[opcode])(op, pid, r, currentExecutable, trace);
+
+        if (execRetVal < 1){
+            //error code returned
+            terminationStatus[pid] = execRetVal;
+            return execRetVal;
+        }
+
+    }
+}
+
 int execute(unsigned int numProcessors, unsigned int initialSP[], int terminationStatus[], int trace) {  
 
     totalNumProcessors = numProcessors;
@@ -88,11 +123,21 @@ int execute(unsigned int numProcessors, unsigned int initialSP[], int terminatio
     //Registers can be accessed in the form of r[pid][reg#], so each processor has its own set of registers
     //the PC, FP, and SP count as registers. Constants are defined for these for clarity
     union Register **r;
-    r = calloc(numProcessors, sizeof(union Register *));
+    r = calloc(numProcessors, sizeof(union Register*));
     for(int i = 0; i < 16; i++){
         r[i] = calloc(16, sizeof(union Register));
     }
 
+    //can't figure out why calloc doesn't zero them out, maybe because of the union type?
+    //anyway, zeroing the registers out manually first
+    for(int i = 0; i < numProcessors; i++){
+        for(int j = 0; j < 16; j++){
+            r[i][j].ui = 0;
+        }
+    }
+
+    //there's some minor speed improvements that could be made here
+    //to not loop so many times but its not worth it to me right now
     for(int i = 0; i < numProcessors; i++){
         //set initial Sp
         r[i][SP].ui = initialSP[i];
@@ -102,41 +147,32 @@ int execute(unsigned int numProcessors, unsigned int initialSP[], int terminatio
         r[i][PC].ui = initPC;
     }
 
-    //begin the fetch/execute loop
-    int haltExec = 0;
-    while (haltExec < 1) {
-
-        //just using a single processor for now but eventually we'll need to do multiprocessing as well
-        Word op;
-        int _b = getWord(r[0][PC].ui, &op);
-        r[0][PC].ui += 1;
-        if(r[0][PC].ui > MAX_ADDR){
-            terminationStatus[0] = VMX20_ADDRESS_OUT_OF_RANGE;
-            return VMX20_ADDRESS_OUT_OF_RANGE;
-        }
-        //printf("Word: %08x\n", op);
-        //process the opcode
-        int opcode = 0x000000FF & op;
-        if (opcode > 25) {
-            terminationStatus[0] = VMX20_ILLEGAL_INSTRUCTION;
-            return VMX20_ILLEGAL_INSTRUCTION;
-        }
-
-        int execRetVal = (*instructionHandlers[opcode])(op, 0, r, currentExecutable);
-
-        if (execRetVal < 1){
-            //error code returned
-            terminationStatus[0] = execRetVal;
-            //return execRetVal;
-            haltExec = 1;
-        }
-
-    }
+    int _t = threadWorker(0, r, terminationStatus, trace);
     
     return 1;
 }
 
-int (*instructionHandlers[26])(Word, int, union Register**, ObjFile *) = {
+int disassemble(unsigned int address, char *buffer, int *errorNumber){
+    if (address > MAX_ADDR) {
+        *errorNumber = VMX20_ADDRESS_OUT_OF_RANGE;
+        return 0;
+    }
+
+    Word instr = currentExecutable->objCode[address];
+    int opcode = 0x000000FF & instr;
+
+    if (opcode > 25) {
+        *errorNumber = VMX20_ILLEGAL_INSTRUCTION;
+        return 0;
+    }
+
+    (*instrFormatHandlers[opcode])(instr, address+1, buffer);
+
+    return 1;
+
+}
+
+int (*instructionHandlers[26])(Word, int, union Register**, ObjFile *, int) = {
     halt,
     load,
     store,
@@ -165,3 +201,32 @@ int (*instructionHandlers[26])(Word, int, union Register**, ObjFile *) = {
     pop
 };
 
+//index in by opcode, get the function that can parse the whole word properly
+void (*instrFormatHandlers[26])(Word, int, char*) = {
+    op,
+    opRegAddr,
+    opRegAddr,
+    opRegConst,
+    opRegAddr,
+    opRegOffsetReg,
+    opRegOffsetReg,
+    opRegReg,
+    opRegReg,
+    opRegReg,
+    opRegReg,
+    opRegReg,
+    opRegReg,
+    opRegReg,
+    opRegReg,
+    opAddr,
+    op,
+    opRegRegAddr,
+    opRegRegAddr,
+    opRegRegAddr,
+    opAddr,
+    opRegRegAddr,
+    opReg,
+    opReg,
+    opReg,
+    opReg
+};
