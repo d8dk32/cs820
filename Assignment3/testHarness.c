@@ -44,10 +44,10 @@ int main(int argc, char** argv){
     error = loadExecutableFile(filename, &errNum);
 
     if (error != 0){
-        printf("Executing '%s'------------------------\n", filename);
+        printf("\nExecuting '%s'------------------------\n", filename);
         int initSP[] = {1000};
-        int terminationStatus[] = {1};
-        error = execute(1, initSP, terminationStatus, 0);
+        int terminationStatus[] = {0};
+        error = execute(numProcessors, initSP, terminationStatus, 0);
         printf("Execution ended--------------------------\n");
         printf("Execute() output: %d\n", error);
         for(int i = 0; i < numProcessors; i++){
@@ -65,10 +65,10 @@ int main(int argc, char** argv){
     error = loadExecutableFile(filename, &errNum);
 
     if (error != 0){
-        printf("Executing '%s'------------------------\n", filename);
+        printf("\nExecuting '%s'------------------------\n", filename);
         int initSP[] = {1000};
-        int terminationStatus[] = {1};
-        error = execute(1, initSP, terminationStatus, 0);
+        int terminationStatus[] = {0};
+        error = execute(numProcessors, initSP, terminationStatus, 0);
         printf("Execution ended--------------------------\n");
         printf("Execute() output: %d\n", error);
         for(int i = 0; i < numProcessors; i++){
@@ -97,10 +97,10 @@ int main(int argc, char** argv){
     putWord(float2, *((int*) &f2));
 
     if (error != 0){
-        printf("Executing '%s'------------------------\n", filename);
+        printf("\nExecuting '%s'------------------------\n", filename);
         int initSP[] = {1000};
-        int terminationStatus[] = {1};
-        error = execute(1, initSP, terminationStatus, 0);
+        int terminationStatus[] = {0};
+        error = execute(numProcessors, initSP, terminationStatus, 0);
         printf("Execution ended--------------------------\n");
         printf("Execute() output: %d\n", error);
         for(int i = 0; i < numProcessors; i++){
@@ -122,10 +122,10 @@ int main(int argc, char** argv){
     getAddress("x", &x);
 
     if (error != 0){
-        printf("Executing '%s'------------------------\n", filename);
+        printf("\nExecuting '%s'------------------------\n", filename);
         int initSP[] = {1000};
-        int terminationStatus[] = {1};
-        error = execute(1, initSP, terminationStatus, 0);
+        int terminationStatus[] = {0};
+        error = execute(numProcessors, initSP, terminationStatus, 0);
         printf("Execution ended--------------------------\n");
         printf("Execute() output: %d\n", error);
         for(int i = 0; i < numProcessors; i++){
@@ -138,10 +138,10 @@ int main(int argc, char** argv){
     putWord(x, 2);
 
     if (error != 0){
-        printf("Executing '%s'------------------------\n", filename);
+        printf("\nExecuting '%s'------------------------\n", filename);
         int initSP[] = {1000};
-        int terminationStatus[] = {1};
-        error = execute(1, initSP, terminationStatus, 0);
+        int terminationStatus[] = {0};
+        error = execute(numProcessors, initSP, terminationStatus, 0);
         printf("Execution ended--------------------------\n");
         printf("Execute() output: %d\n", error);
         for(int i = 0; i < numProcessors; i++){
@@ -154,10 +154,10 @@ int main(int argc, char** argv){
     putWord(x, 1);
 
     if (error != 0){
-        printf("Executing '%s'------------------------\n", filename);
+        printf("\nExecuting '%s'------------------------\n", filename);
         int initSP[] = {1000};
-        int terminationStatus[] = {1};
-        error = execute(1, initSP, terminationStatus, 0);
+        int terminationStatus[] = {0};
+        error = execute(numProcessors, initSP, terminationStatus, 0);
         printf("Execution ended--------------------------\n");
         printf("Execute() output: %d\n", error);
         for(int i = 0; i < numProcessors; i++){
@@ -172,10 +172,10 @@ int main(int argc, char** argv){
     error = loadExecutableFile(filename, &errNum);
 
     if (error != 0){
-        printf("Executing '%s'------------------------\n", filename);
+        printf("\nExecuting '%s'------------------------\n", filename);
         int initSP[] = {1000};
-        int terminationStatus[] = {1};
-        error = execute(1, initSP, terminationStatus, 1);
+        int terminationStatus[] = {0};
+        error = execute(numProcessors, initSP, terminationStatus, 1);
         printf("Execution ended--------------------------\n");
         printf("Execute() output: %d\n", error);
         for(int i = 0; i < numProcessors; i++){
@@ -186,25 +186,27 @@ int main(int argc, char** argv){
     assertEquals("result", 84);
     assertEquals("popResult", 1);
 
-    //-------Test 6: Multiprocessing/The Leftover Opcodes - getpid, getpn, cmpxchg------------
+    //-------Test 6: Multiprocessing Basics--------------------
+    numProcessors = 4;
+    filename = "MultiProcessorTest.exe";
+    error = loadExecutableFile(filename, &errNum);
 
-    // filename = "TestCallPushAndPop.exe";
-    // error = loadExecutableFile(filename, &errNum);
+    if (error != 0){
+        printf("\nExecuting '%s'------------------------\n", filename);
+        int initSP[] = {1000, 2000, 3000, 4000};
+        int terminationStatus[] = {0, 0, 0, 0};
+        error = execute(numProcessors, initSP, terminationStatus, 1);
+        printf("Execution ended--------------------------\n");
+        printf("Execute() output: %d\n", error);
+        for(int i = 0; i < numProcessors; i++){
+            printf("Processor %d termination status: %d\n", i, terminationStatus[i]);
+        }
+    }
 
-    // if (error != 0){
-    //     printf("Executing '%s'------------------------\n", filename);
-    //     int initSP[] = {1000};
-    //     int terminationStatus[] = {1};
-    //     error = execute(1, initSP, terminationStatus, 1);
-    //     printf("Execution ended--------------------------\n");
-    //     printf("Execute() output: %d\n", error);
-    //     for(int i = 0; i < numProcessors; i++){
-    //         printf("Processor %d termination status: %d\n", i, terminationStatus[i]);
-    //     }
-    // }
-
-    // assertEquals("result", 84);
-    // assertEquals("popResult", 1);
-
+    assertEquals("x1", 0);
+    assertEquals("x2", 1);
+    assertEquals("x3", 2);
+    assertEquals("x4", 3);
+    assertEquals("pn", 4);
  
 }

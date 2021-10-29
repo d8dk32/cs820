@@ -9,7 +9,7 @@
 #define ADDRESS_OUT_OF_RANGE -2
 #define ILLEGAL_INSTRUCTION -3
 
-static int totalNumProcessors = 1; //1 by default
+static int totalNumProcessors;
 
 char* regNames[];
 char* opcodeNames[];

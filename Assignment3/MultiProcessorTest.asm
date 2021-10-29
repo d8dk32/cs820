@@ -1,21 +1,25 @@
 # testing the integer math operations
 
-export x
-export y
+export x1
+export x2
+export x3
+export x4
+export pn
 export mainx20
 
 mainx20:
 	jmp skipData
-x:	word 0
-y:  word 0
+pn:     word 0
+x1:	    word 0
+x2:     word 0
+x3:     word 0
+x4:     word 0
 skipData:
-	ldimm r2, 2
-    push r2
-    call func
-    pop r3
-    store r3, y
+    getpn r0
+    store r0, pn
+    ldaddr r1, x1
+    getpid r2
+    addi r1, r2
+    stind r2, 0(r1)
     halt
-func:
-    ldimm r1, 1
-    store r1, x
-    ret
+
