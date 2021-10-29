@@ -50,9 +50,10 @@ int main(int argc, char** argv){
         error = execute(numProcessors, initSP, terminationStatus, 0);
         printf("Execution ended--------------------------\n");
         printf("Execute() output: %d\n", error);
+        printf("Termination Statuses: [ ");
         for(int i = 0; i < numProcessors; i++){
-            printf("Processor %d termination status: %d\n", i, terminationStatus[i]);
-        }
+            printf("%d ", terminationStatus[i]);
+        } printf("]\n");
     }
 
     assertEquals("y1", 1);
@@ -71,9 +72,10 @@ int main(int argc, char** argv){
         error = execute(numProcessors, initSP, terminationStatus, 0);
         printf("Execution ended--------------------------\n");
         printf("Execute() output: %d\n", error);
+        printf("Termination Statuses: [ ");
         for(int i = 0; i < numProcessors; i++){
-            printf("Processor %d termination status: %d\n", i, terminationStatus[i]);
-        }
+            printf("%d ", terminationStatus[i]);
+        } printf("]\n");
     }
 
     assertEquals("add", 5);
@@ -103,9 +105,10 @@ int main(int argc, char** argv){
         error = execute(numProcessors, initSP, terminationStatus, 0);
         printf("Execution ended--------------------------\n");
         printf("Execute() output: %d\n", error);
+        printf("Termination Statuses: [ ");
         for(int i = 0; i < numProcessors; i++){
-            printf("Processor %d termination status: %d\n", i, terminationStatus[i]);
-        }
+            printf("%d ", terminationStatus[i]);
+        } printf("]\n");
     }
 
     assertEqualsFloat("add", 5.0f);
@@ -128,9 +131,10 @@ int main(int argc, char** argv){
         error = execute(numProcessors, initSP, terminationStatus, 0);
         printf("Execution ended--------------------------\n");
         printf("Execute() output: %d\n", error);
+        printf("Termination Statuses: [ ");
         for(int i = 0; i < numProcessors; i++){
-            printf("Processor %d termination status: %d\n", i, terminationStatus[i]);
-        }
+            printf("%d ", terminationStatus[i]);
+        } printf("]\n");
     }
 
     assertEquals("z", 1);
@@ -144,9 +148,10 @@ int main(int argc, char** argv){
         error = execute(numProcessors, initSP, terminationStatus, 0);
         printf("Execution ended--------------------------\n");
         printf("Execute() output: %d\n", error);
+        printf("Termination Statuses: [ ");
         for(int i = 0; i < numProcessors; i++){
-            printf("Processor %d termination status: %d\n", i, terminationStatus[i]);
-        }
+            printf("%d ", terminationStatus[i]);
+        } printf("]\n");
     }
 
     assertEquals("z", 2);
@@ -160,9 +165,10 @@ int main(int argc, char** argv){
         error = execute(numProcessors, initSP, terminationStatus, 0);
         printf("Execution ended--------------------------\n");
         printf("Execute() output: %d\n", error);
+        printf("Termination Statuses: [ ");
         for(int i = 0; i < numProcessors; i++){
-            printf("Processor %d termination status: %d\n", i, terminationStatus[i]);
-        }
+            printf("%d ", terminationStatus[i]);
+        } printf("]\n");
     }
 
     assertEquals("z", 3);
@@ -178,9 +184,10 @@ int main(int argc, char** argv){
         error = execute(numProcessors, initSP, terminationStatus, 1);
         printf("Execution ended--------------------------\n");
         printf("Execute() output: %d\n", error);
+        printf("Termination Statuses: [ ");
         for(int i = 0; i < numProcessors; i++){
-            printf("Processor %d termination status: %d\n", i, terminationStatus[i]);
-        }
+            printf("%d ", terminationStatus[i]);
+        } printf("]\n");
     }
 
     assertEquals("result", 84);
@@ -198,9 +205,10 @@ int main(int argc, char** argv){
         error = execute(numProcessors, initSP, terminationStatus, 1);
         printf("Execution ended--------------------------\n");
         printf("Execute() output: %d\n", error);
+        printf("Termination Statuses: [ ");
         for(int i = 0; i < numProcessors; i++){
-            printf("Processor %d termination status: %d\n", i, terminationStatus[i]);
-        }
+            printf("%d ", terminationStatus[i]);
+        } printf("]\n");
     }
 
     assertEquals("x1", 0);

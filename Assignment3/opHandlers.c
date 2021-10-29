@@ -21,8 +21,10 @@ pthread_mutex_t traceMut;
 
 int halt(Word instr, int pid, union Register** r, ObjFile *curExec, int trace){
     if (trace == 1){
+        if(pthread_mutex_lock(&traceMut) != 0) printf("Error locking for tracing in process %d\n", pid);
         traceRegisters(pid, r);
         printf("<%d>: halt\n", pid);
+        if(pthread_mutex_unlock(&traceMut) != 0) printf("Error unlocking for tracing in process %d\n", pid);
     }
     return NORMAL_TERMINATION;
 }
@@ -36,11 +38,15 @@ int load(Word instr, int pid, union Register** r, ObjFile *curExec, int trace){
         return ADDRESS_OUT_OF_RANGE;
     }
 
+    if(pthread_mutex_lock(&memMut) != 0) printf("Error locking for mem access in process %d\n", pid);
     r[pid][reg1].i = curExec->objCode[ r[pid][PC].ui+addr ];
+    if(pthread_mutex_unlock(&memMut) != 0) printf("Error unlocking for mem access in process %d\n", pid);
 
     if (trace == 1){
+        if(pthread_mutex_lock(&traceMut) != 0) printf("Error locking for tracing in process %d\n", pid);
         traceRegisters(pid, r);
         printf("<%d>: load r%d, %d\n", pid, reg1, addr);
+        if(pthread_mutex_unlock(&traceMut) != 0) printf("Error unlocking for tracing in process %d\n", pid);
     }
 
     return CONTINUE_PROCESSING;
@@ -55,11 +61,15 @@ int store(Word instr, int pid, union Register** r, ObjFile *curExec, int trace){
         return ADDRESS_OUT_OF_RANGE;
     }
 
+    if(pthread_mutex_lock(&memMut) != 0) printf("Error locking for mem access in process %d\n", pid);
     curExec->objCode[ r[pid][PC].ui+addr ] = r[pid][reg1].i;
+    if(pthread_mutex_unlock(&memMut) != 0) printf("Error unlocking for mem access in process %d\n", pid);
     
     if (trace == 1){
+        if(pthread_mutex_lock(&traceMut) != 0) printf("Error locking for tracing in process %d\n", pid);
         traceRegisters(pid, r);
         printf("<%d>: store r%d, %d\n", pid, reg1, addr);
+        if(pthread_mutex_unlock(&traceMut) != 0) printf("Error unlocking for tracing in process %d\n", pid);
     }
 
     return CONTINUE_PROCESSING;
@@ -73,8 +83,10 @@ int ldimm(Word instr, int pid, union Register** r, ObjFile *curExec, int trace){
     r[pid][reg1].i = constant;
     
     if (trace == 1){
+        if(pthread_mutex_lock(&traceMut) != 0) printf("Error locking for tracing in process %d\n", pid);
         traceRegisters(pid, r);
         printf("<%d>: ldimm r%d, %d\n", pid, reg1, constant);
+        if(pthread_mutex_unlock(&traceMut) != 0) printf("Error unlocking for tracing in process %d\n", pid);
     }    
 
     return CONTINUE_PROCESSING;
@@ -88,8 +100,10 @@ int ldaddr(Word instr, int pid, union Register** r, ObjFile *curExec, int trace)
     r[pid][reg1].i = r[pid][PC].ui+addr;
     
     if (trace == 1){
+        if(pthread_mutex_lock(&traceMut) != 0) printf("Error locking for tracing in process %d\n", pid);
         traceRegisters(pid, r);
         printf("<%d>: ldaddr r%d, %d\n", pid, reg1, addr);
+        if(pthread_mutex_unlock(&traceMut) != 0) printf("Error unlocking for tracing in process %d\n", pid);
     }
 
     return CONTINUE_PROCESSING;
@@ -109,8 +123,10 @@ int ldind(Word instr, int pid, union Register** r, ObjFile *curExec, int trace){
     r[pid][reg1].i = curExec->objCode[ r[pid][reg2].i + offset ];
     
     if (trace == 1){
+        if(pthread_mutex_lock(&traceMut) != 0) printf("Error locking for tracing in process %d\n", pid);
         traceRegisters(pid, r);
         printf("<%d>: ldind r%d, %d(%d)\n", pid, reg1, offset, reg2);
+        if(pthread_mutex_unlock(&traceMut) != 0) printf("Error unlocking for tracing in process %d\n", pid);
     }
 
     return CONTINUE_PROCESSING;
@@ -130,8 +146,10 @@ int stind(Word instr, int pid, union Register** r, ObjFile *curExec, int trace){
     curExec->objCode[ r[pid][reg2].i+offset ] = r[pid][reg1].i;
     
     if (trace == 1){
+        if(pthread_mutex_lock(&traceMut) != 0) printf("Error locking for tracing in process %d\n", pid);
         traceRegisters(pid, r);
         printf("<%d>: stind r%d, %d(%d)\n", pid, reg1, offset, reg2);
+        if(pthread_mutex_unlock(&traceMut) != 0) printf("Error unlocking for tracing in process %d\n", pid);
     }
 
     return CONTINUE_PROCESSING;
@@ -146,8 +164,10 @@ int addf(Word instr, int pid, union Register** r, ObjFile *curExec, int trace){
     r[pid][reg1].f = r[pid][reg1].f + r[pid][reg2].f;
     
     if (trace == 1){
+        if(pthread_mutex_lock(&traceMut) != 0) printf("Error locking for tracing in process %d\n", pid);
         traceRegisters(pid, r);
         printf("<%d>: addf r%d, r%d\n", pid, reg1, reg2);
+        if(pthread_mutex_unlock(&traceMut) != 0) printf("Error unlocking for tracing in process %d\n", pid);
     }
 
     return CONTINUE_PROCESSING;
@@ -162,8 +182,10 @@ int subf(Word instr, int pid, union Register** r, ObjFile *curExec, int trace){
     r[pid][reg1].f = r[pid][reg1].f - r[pid][reg2].f;
     
     if (trace == 1){
+        if(pthread_mutex_lock(&traceMut) != 0) printf("Error locking for tracing in process %d\n", pid);
         traceRegisters(pid, r);
         printf("<%d>: subf r%d, r%d\n", pid, reg1, reg2);
+        if(pthread_mutex_unlock(&traceMut) != 0) printf("Error unlocking for tracing in process %d\n", pid);
     }
 
     return CONTINUE_PROCESSING;
@@ -182,8 +204,10 @@ int divf(Word instr, int pid, union Register** r, ObjFile *curExec, int trace){
     r[pid][reg1].f = r[pid][reg1].f / r[pid][reg2].f;
 
     if (trace == 1){
+        if(pthread_mutex_lock(&traceMut) != 0) printf("Error locking for tracing in process %d\n", pid);
         traceRegisters(pid, r);
         printf("<%d>: divf r%d, r%d\n", pid, reg1, reg2);
+        if(pthread_mutex_unlock(&traceMut) != 0) printf("Error unlocking for tracing in process %d\n", pid);
     }
 
     return CONTINUE_PROCESSING;
@@ -198,8 +222,10 @@ int mulf(Word instr, int pid, union Register** r, ObjFile *curExec, int trace){
     r[pid][reg1].f = r[pid][reg1].f * r[pid][reg2].f;
     
     if (trace == 1){
+        if(pthread_mutex_lock(&traceMut) != 0) printf("Error locking for tracing in process %d\n", pid);
         traceRegisters(pid, r);
         printf("<%d>: mulf r%d, r%d\n", pid, reg1, reg2);
+        if(pthread_mutex_unlock(&traceMut) != 0) printf("Error unlocking for tracing in process %d\n", pid);
     }
 
     return CONTINUE_PROCESSING;
@@ -214,8 +240,10 @@ int addi(Word instr, int pid, union Register** r, ObjFile *curExec, int trace){
     r[pid][reg1].i = r[pid][reg1].i + r[pid][reg2].i;
    
     if (trace == 1){
+        if(pthread_mutex_lock(&traceMut) != 0) printf("Error locking for tracing in process %d\n", pid);
         traceRegisters(pid, r);
         printf("<%d>: addi r%d, r%d\n", pid, reg1, reg2);
+        if(pthread_mutex_unlock(&traceMut) != 0) printf("Error unlocking for tracing in process %d\n", pid);
     }
 
     return CONTINUE_PROCESSING;
@@ -230,8 +258,10 @@ int subi(Word instr, int pid, union Register** r, ObjFile *curExec, int trace){
     r[pid][reg1].i = r[pid][reg1].i - r[pid][reg2].i;
     
     if (trace == 1){
+        if(pthread_mutex_lock(&traceMut) != 0) printf("Error locking for tracing in process %d\n", pid);
         traceRegisters(pid, r);
         printf("<%d>: subi r%d, r%d\n", pid, reg1, reg2);
+        if(pthread_mutex_unlock(&traceMut) != 0) printf("Error unlocking for tracing in process %d\n", pid);
     }
 
     return CONTINUE_PROCESSING;
@@ -250,8 +280,10 @@ int divi(Word instr, int pid, union Register** r, ObjFile *curExec, int trace){
     r[pid][reg1].i = r[pid][reg1].i / r[pid][reg2].i;
     
     if (trace == 1){
+        if(pthread_mutex_lock(&traceMut) != 0) printf("Error locking for tracing in process %d\n", pid);
         traceRegisters(pid, r);
         printf("<%d>: divi r%d, r%d\n", pid, reg1, reg2);
+        if(pthread_mutex_unlock(&traceMut) != 0) printf("Error unlocking for tracing in process %d\n", pid);
     }
 
     return CONTINUE_PROCESSING;
@@ -266,8 +298,10 @@ int muli(Word instr, int pid, union Register** r, ObjFile *curExec, int trace){
     r[pid][reg1].i = r[pid][reg1].i * r[pid][reg2].i;
     
     if (trace == 1){
+        if(pthread_mutex_lock(&traceMut) != 0) printf("Error locking for tracing in process %d\n", pid);
         traceRegisters(pid, r);
         printf("<%d>: muli r%d, r%d\n", pid, reg1, reg2);
+        if(pthread_mutex_unlock(&traceMut) != 0) printf("Error unlocking for tracing in process %d\n", pid);
     };
 
     return CONTINUE_PROCESSING;
@@ -296,8 +330,10 @@ int call(Word instr, int pid, union Register** r, ObjFile *curExec, int trace){
     }
 
     if (trace == 1){
+        if(pthread_mutex_lock(&traceMut) != 0) printf("Error locking for tracing in process %d\n", pid);
         traceRegisters(pid, r);
         printf("<%d>: call %d\n", pid, addr);
+        if(pthread_mutex_unlock(&traceMut) != 0) printf("Error unlocking for tracing in process %d\n", pid);
     }
 
     return CONTINUE_PROCESSING;
@@ -324,8 +360,10 @@ int ret(Word instr, int pid, union Register** r, ObjFile *curExec, int trace){
     }
 
     if (trace == 1){
+        if(pthread_mutex_lock(&traceMut) != 0) printf("Error locking for tracing in process %d\n", pid);
         traceRegisters(pid, r);
         printf("<%d>: ret\n", pid);
+        if(pthread_mutex_unlock(&traceMut) != 0) printf("Error unlocking for tracing in process %d\n", pid);
     }
 
     return CONTINUE_PROCESSING;
@@ -347,8 +385,10 @@ int blt(Word instr, int pid, union Register** r, ObjFile *curExec, int trace){
     }
 
     if (trace == 1){
+        if(pthread_mutex_lock(&traceMut) != 0) printf("Error locking for tracing in process %d\n", pid);
         traceRegisters(pid, r);
         printf("<%d>: blt r%d, r%d, %d\n", pid, reg1, reg2, addr);
+        if(pthread_mutex_unlock(&traceMut) != 0) printf("Error unlocking for tracing in process %d\n", pid);
     }
 
     return CONTINUE_PROCESSING;
@@ -370,8 +410,10 @@ int bgt(Word instr, int pid, union Register** r, ObjFile *curExec, int trace){
     }
 
     if (trace == 1){
+        if(pthread_mutex_lock(&traceMut) != 0) printf("Error locking for tracing in process %d\n", pid);
         traceRegisters(pid, r);
         printf("<%d>: bgt r%d, r%d, %d\n", pid, reg1, reg2, addr);
+        if(pthread_mutex_unlock(&traceMut) != 0) printf("Error unlocking for tracing in process %d\n", pid);
     }
 
     return CONTINUE_PROCESSING;
@@ -393,8 +435,10 @@ int beq(Word instr, int pid, union Register** r, ObjFile *curExec, int trace){
     }
 
     if (trace == 1){
+        if(pthread_mutex_lock(&traceMut) != 0) printf("Error locking for tracing in process %d\n", pid);
         traceRegisters(pid, r);
         printf("<%d>: beq r%d, r%d, %d\n", pid, reg1, reg2, addr);
+        if(pthread_mutex_unlock(&traceMut) != 0) printf("Error unlocking for tracing in process %d\n", pid);
     }
 
     return CONTINUE_PROCESSING;
@@ -411,8 +455,10 @@ int jmp(Word instr, int pid, union Register** r, ObjFile *curExec, int trace){
     }
 
     if (trace == 1){
+        if(pthread_mutex_lock(&traceMut) != 0) printf("Error locking for tracing in process %d\n", pid);
         traceRegisters(pid, r);
         printf("<%d>: jmp %d\n", pid, addr);
+        if(pthread_mutex_unlock(&traceMut) != 0) printf("Error unlocking for tracing in process %d\n", pid);
     }
 
     return CONTINUE_PROCESSING;
@@ -436,8 +482,10 @@ int cmpxchg(Word instr, int pid, union Register** r, ObjFile *curExec, int trace
     }
 
     if (trace == 1){
+        if(pthread_mutex_lock(&traceMut) != 0) printf("Error locking for tracing in process %d\n", pid);
         traceRegisters(pid, r);
         printf("<%d>: cmpxchg r%d, r%d, %d\n", pid, reg1, reg2, addr);
+        if(pthread_mutex_unlock(&traceMut) != 0) printf("Error unlocking for tracing in process %d\n", pid);
     }
 
     return CONTINUE_PROCESSING;
@@ -451,8 +499,10 @@ int getpid(Word instr, int pid, union Register** r, ObjFile *curExec, int trace)
     r[pid][reg1].i = pid;
 
     if (trace == 1){
+        if(pthread_mutex_lock(&traceMut) != 0) printf("Error locking for tracing in process %d\n", pid);
         traceRegisters(pid, r);
         printf("<%d>: getpid r%d\n", pid, reg1);
+        if(pthread_mutex_unlock(&traceMut) != 0) printf("Error unlocking for tracing in process %d\n", pid);
     }
 
     return CONTINUE_PROCESSING;
@@ -466,8 +516,10 @@ int getpn(Word instr, int pid, union Register** r, ObjFile *curExec, int trace){
     r[pid][reg1].i = totalNumProcessors;
 
     if (trace == 1){
+        if(pthread_mutex_lock(&traceMut) != 0) printf("Error locking for tracing in process %d\n", pid);
         traceRegisters(pid, r);
         printf("<%d>: getpn r%d\n", pid, reg1);
+        if(pthread_mutex_unlock(&traceMut) != 0) printf("Error unlocking for tracing in process %d\n", pid);
     }
 
     return CONTINUE_PROCESSING;
@@ -486,8 +538,10 @@ int push(Word instr, int pid, union Register** r, ObjFile *curExec, int trace){
     curExec->objCode[r[pid][SP].ui] = r[pid][reg1].i;
 
     if (trace == 1){
+        if(pthread_mutex_lock(&traceMut) != 0) printf("Error locking for tracing in process %d\n", pid);
         traceRegisters(pid, r);
         printf("<%d>: push r%d\n", pid, reg1);
+        if(pthread_mutex_unlock(&traceMut) != 0) printf("Error unlocking for tracing in process %d\n", pid);
     }
 
     return CONTINUE_PROCESSING;
@@ -510,8 +564,10 @@ int pop(Word instr, int pid, union Register** r, ObjFile *curExec, int trace){
     }
 
     if (trace == 1){
+        if(pthread_mutex_lock(&traceMut) != 0) printf("Error locking for tracing in process %d\n", pid);
         traceRegisters(pid, r);
         printf("<%d>: pop r%d\n", pid, reg1);
+        if(pthread_mutex_unlock(&traceMut) != 0) printf("Error unlocking for tracing in process %d\n", pid);
     }
 
     return CONTINUE_PROCESSING;
