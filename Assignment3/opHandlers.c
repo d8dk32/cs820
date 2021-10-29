@@ -120,7 +120,9 @@ int ldind(Word instr, int pid, union Register** r, ObjFile *curExec, int trace){
         return ADDRESS_OUT_OF_RANGE;
     }
 
+    if(pthread_mutex_lock(&memMut) != 0) printf("Error locking for mem access in process %d\n", pid);
     r[pid][reg1].i = curExec->objCode[ r[pid][reg2].i + offset ];
+    if(pthread_mutex_unlock(&memMut) != 0) printf("Error unlocking for mem access in process %d\n", pid);
     
     if (trace == 1){
         if(pthread_mutex_lock(&traceMut) != 0) printf("Error locking for tracing in process %d\n", pid);
@@ -143,7 +145,9 @@ int stind(Word instr, int pid, union Register** r, ObjFile *curExec, int trace){
         return ADDRESS_OUT_OF_RANGE;
     }
 
+    if(pthread_mutex_lock(&memMut) != 0) printf("Error locking for mem access in process %d\n", pid);
     curExec->objCode[ r[pid][reg2].i+offset ] = r[pid][reg1].i;
+    if(pthread_mutex_unlock(&memMut) != 0) printf("Error locking for mem access in process %d\n", pid);
     
     if (trace == 1){
         if(pthread_mutex_lock(&traceMut) != 0) printf("Error locking for tracing in process %d\n", pid);
@@ -317,13 +321,19 @@ int call(Word instr, int pid, union Register** r, ObjFile *curExec, int trace){
     }
 
     r[pid][SP].ui -= 1;
+    if(pthread_mutex_lock(&memMut) != 0) printf("Error locking for mem access in process %d\n", pid);
     curExec->objCode[r[pid][SP].ui] = r[pid][PC].ui;
+    if(pthread_mutex_unlock(&memMut) != 0) printf("Error unlocking for mem access in process %d\n", pid);
     r[pid][PC].ui += addr;
     r[pid][SP].ui -= 1;
-    curExec->objCode[r[pid][SP].ui] = r[pid][FP].ui;    
+    if(pthread_mutex_lock(&memMut) != 0) printf("Error locking for mem access in process %d\n", pid);
+    curExec->objCode[r[pid][SP].ui] = r[pid][FP].ui;
+    if(pthread_mutex_unlock(&memMut) != 0) printf("Error unlocking for mem access in process %d\n", pid);    
     r[pid][FP].ui = r[pid][SP].ui;
     r[pid][SP].ui -= 1;
+    if(pthread_mutex_lock(&memMut) != 0) printf("Error locking for mem access in process %d\n", pid);
     curExec->objCode[r[pid][SP].ui] = 0;
+    if(pthread_mutex_unlock(&memMut) != 0) printf("Error unlocking for mem access in process %d\n", pid);
 
     if(r[pid][SP].ui > MAX_ADDR){
         return ADDRESS_OUT_OF_RANGE;
@@ -345,15 +355,23 @@ int ret(Word instr, int pid, union Register** r, ObjFile *curExec, int trace){
         return ADDRESS_OUT_OF_RANGE;
     }
 
+    if(pthread_mutex_lock(&memMut) != 0) printf("Error locking for mem access in process %d\n", pid);
     int returnVal = curExec->objCode[r[pid][SP].ui];
+    if(pthread_mutex_unlock(&memMut) != 0) printf("Error unlocking for mem access in process %d\n", pid);
     r[pid][SP].ui += 1;
+    if(pthread_mutex_lock(&memMut) != 0) printf("Error locking for mem access in process %d\n", pid);
     int savedFP = curExec->objCode[r[pid][SP].ui];
+    if(pthread_mutex_unlock(&memMut) != 0) printf("Error unlocking for mem access in process %d\n", pid);
     r[pid][SP].ui += 1;
+    if(pthread_mutex_lock(&memMut) != 0) printf("Error locking for mem access in process %d\n", pid);
     unsigned int returnAddr = curExec->objCode[r[pid][SP].ui];
+    if(pthread_mutex_unlock(&memMut) != 0) printf("Error unlocking for mem access in process %d\n", pid);
     r[pid][SP].ui += 1;
     r[pid][FP].ui = savedFP;
     r[pid][PC].ui = returnAddr;
+    if(pthread_mutex_lock(&memMut) != 0) printf("Error locking for mem access in process %d\n", pid);
     curExec->objCode[r[pid][FP].ui-1] = returnVal;
+    if(pthread_mutex_unlock(&memMut) != 0) printf("Error unlocking for mem access in process %d\n", pid);
 
     if(r[pid][SP].ui > MAX_ADDR || r[pid][FP].ui > MAX_ADDR){
         return ADDRESS_OUT_OF_RANGE;
@@ -475,11 +493,13 @@ int cmpxchg(Word instr, int pid, union Register** r, ObjFile *curExec, int trace
         return ADDRESS_OUT_OF_RANGE;
     }
 
+    if(pthread_mutex_lock(&memMut) != 0) printf("Error locking for mem access in process %d\n", pid);
     if(r[pid][reg1].i == curExec->objCode[r[pid][PC].ui+addr]){
         curExec->objCode[r[pid][PC].ui+addr] = r[pid][reg2].i;
     } else {
         r[pid][reg1].i = curExec->objCode[r[pid][PC].ui+addr];
     }
+    if(pthread_mutex_unlock(&memMut) != 0) printf("Error unlocking for mem access in process %d\n", pid);
 
     if (trace == 1){
         if(pthread_mutex_lock(&traceMut) != 0) printf("Error locking for tracing in process %d\n", pid);
@@ -535,7 +555,9 @@ int push(Word instr, int pid, union Register** r, ObjFile *curExec, int trace){
     }
 
     r[pid][SP].ui -= 1;
+    if(pthread_mutex_lock(&memMut) != 0) printf("Error locking for mem access in process %d\n", pid);
     curExec->objCode[r[pid][SP].ui] = r[pid][reg1].i;
+    if(pthread_mutex_unlock(&memMut) != 0) printf("Error unlocking for mem access in process %d\n", pid);
 
     if (trace == 1){
         if(pthread_mutex_lock(&traceMut) != 0) printf("Error locking for tracing in process %d\n", pid);
@@ -556,7 +578,9 @@ int pop(Word instr, int pid, union Register** r, ObjFile *curExec, int trace){
 
     int reg1 = 0x0000000F & (instr >> 8);
 
+    if(pthread_mutex_lock(&memMut) != 0) printf("Error locking for mem access in process %d\n", pid);
     r[pid][reg1].i = curExec->objCode[r[pid][SP].ui];
+    if(pthread_mutex_unlock(&memMut) != 0) printf("Error unlocking for mem access in process %d\n", pid);
     r[pid][SP].ui += 1;
 
     if(r[pid][SP].ui > MAX_ADDR){
