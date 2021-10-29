@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "opHandlers.h"
+#include <pthread.h>
 
 #define CONTINUE_PROCESSING 1
 //VMX20 error code analogues
@@ -12,6 +13,9 @@ static int totalNumProcessors = 1; //1 by default
 
 char* regNames[];
 char* opcodeNames[];
+
+pthread_mutex_t memMut;
+pthread_mutex_t traceMut;
 
 //----op handlers----
 

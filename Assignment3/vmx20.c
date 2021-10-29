@@ -10,6 +10,11 @@
 #define ONE_MB 1024*1024
 
 ObjFile *currentExecutable;
+union Register **r;
+unsigned int* initialSP; 
+int* terminationStatus; 
+int trace;
+
 int (*instructionHandlers[26])(Word, int, union Register**, ObjFile *, int); 
 void (*instrFormatHandlers[26])(Word, int, char*);
 
@@ -82,7 +87,9 @@ int putWord(unsigned int addr, int word){
 }
 
 
-int threadWorker(int pid, union Register** r, int terminationStatus[], int trace){
+void * threadWorker(void * _pid){
+    int pid = (int)(long) _pid; //all this horrible casting to make warnings go away
+
     //begin the fetch/execute loop
     while (1) {
 
@@ -93,7 +100,7 @@ int threadWorker(int pid, union Register** r, int terminationStatus[], int trace
         r[pid][PC].ui += 1;
         if(r[pid][PC].ui > MAX_ADDR){
             terminationStatus[pid] = VMX20_ADDRESS_OUT_OF_RANGE;
-            return VMX20_ADDRESS_OUT_OF_RANGE;
+            return (void *)(long) VMX20_ADDRESS_OUT_OF_RANGE;
         }
 
         //printf("Word: %08x\n", op);
@@ -101,7 +108,7 @@ int threadWorker(int pid, union Register** r, int terminationStatus[], int trace
         int opcode = 0x000000FF & op;
         if (opcode > 25) {
             terminationStatus[pid] = VMX20_ILLEGAL_INSTRUCTION;
-            return VMX20_ILLEGAL_INSTRUCTION;
+            return (void *)(long) VMX20_ILLEGAL_INSTRUCTION;
         }
 
         int execRetVal = (*instructionHandlers[opcode])(op, pid, r, currentExecutable, trace);
@@ -109,20 +116,26 @@ int threadWorker(int pid, union Register** r, int terminationStatus[], int trace
         if (execRetVal < 1){
             //error code returned
             terminationStatus[pid] = execRetVal;
-            return execRetVal;
+            return (void *)(long) execRetVal;
         }
 
     }
 }
 
-int execute(unsigned int numProcessors, unsigned int initialSP[], int terminationStatus[], int trace) {  
+int execute(unsigned int numProcessors, unsigned int _initialSP[], int _terminationStatus[], int _trace) {  
 
     totalNumProcessors = numProcessors;
+    initialSP = _initialSP;
+    terminationStatus = _terminationStatus;
+    trace = _trace;
+
+
+    pthread_t pt[VMX20_MAX_PROCESSORS];
 
     //init registers
     //Registers can be accessed in the form of r[pid][reg#], so each processor has its own set of registers
     //the PC, FP, and SP count as registers. Constants are defined for these for clarity
-    union Register **r;
+    
     r = calloc(numProcessors, sizeof(union Register*));
     for(int i = 0; i < 16; i++){
         r[i] = calloc(16, sizeof(union Register));
@@ -147,8 +160,19 @@ int execute(unsigned int numProcessors, unsigned int initialSP[], int terminatio
         r[i][PC].ui = initPC;
     }
 
-    int _t = threadWorker(0, r, terminationStatus, trace);
-    
+    for(int i = 0; i < numProcessors && i < VMX20_MAX_PROCESSORS; i++){
+        if (pthread_create(&pt[i], NULL, threadWorker, (void *)(long) i) != 0){
+            fprintf(stderr, "Error creating thread %d\n", i);
+        }
+    }
+
+    for(int i = 0; i < numProcessors && i < VMX20_MAX_PROCESSORS; i++){
+        if (pthread_join(pt[i], NULL))
+        {
+            fprintf(stderr, "Error joining thread %d\n", i);
+        }
+    }
+
     return 1;
 }
 
