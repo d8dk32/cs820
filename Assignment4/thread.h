@@ -3,14 +3,17 @@
 // 
 //
 
-typedef struct Mutex Mutex;
+typedef struct thread_mutex_t thread_mutex_t;
 typedef struct TCB TCB;
 
-typedef struct {
+//including mutex type in initial submission because the TCB struct has
+// a mutex pointer that I didn't want to add later
+struct thread_mutex_t{
+    int locked; //boolean
     TCB* owner;
-} Mutex;
+}; 
 
-typedef struct {
+struct TCB {
     long rdi;
     long rsi;
     long rsp;
@@ -20,10 +23,9 @@ typedef struct {
     long r14;
     long r15;
     TCB* next;
-    int* stackPtr;
-    Mutex* heldMutex;
-} TCB;
-
+    long* stackPtr;
+    thread_mutex_t* heldMutex;
+};
 
 long thread_create(void (*)(void*), void*);
 void thread_yield(void);
