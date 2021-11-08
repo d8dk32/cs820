@@ -29,3 +29,11 @@ struct TCB {
 
 long thread_create(void (*)(void*), void*);
 void thread_yield(void);
+
+long thread_self(void);
+
+// Some non-primitives that are useful to expose, for diagnostic purposes
+TCB* getReadyQueueTail(void);
+TCB* getReadyQueueHead(void);
+void setReadyQueueHead(TCB*);
+int readyQueueLength(void);
