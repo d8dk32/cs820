@@ -84,5 +84,6 @@ int main(int argc, char** argv){
     printTCBStack(getReadyQueueHead()->next, 3);
     printTCBStackByteByByte(getReadyQueueHead()->next, 24);
     thread_yield();
+    printf("child thread complete, execution returned to main thread\n");
 
 }

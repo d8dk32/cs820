@@ -4,7 +4,8 @@
 
 
 extern void asm_yield(TCB* curTCB, TCB* nextTCB);
-extern void thread_start(void (*work)(void*), void* arg);
+extern void asm_yield_cleanup(TCB* curTCB, TCB* nextTCB);
+//extern void thread_start(void (*work)(void*), void* arg);
 
 TCB* readyQueueHead = NULL;
 
@@ -53,7 +54,7 @@ void cleanup(){
     
     waitingForCleanup = cleanupTCB;
     
-    asm_yield(NULL, readyQueueHead);
+    asm_yield_cleanup(NULL, readyQueueHead);
 }
 
 
