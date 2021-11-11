@@ -34,7 +34,7 @@ void thread_yield(void);
 // The primitives for Part 2.
 long thread_self(void); //I did this one already cause it was really simple.
 
-// Some non-primitives that are useful to expose, for the purposes of my testing
+// Some utilities that I thought might be useful to expose, for the purposes of my testing
 TCB* getReadyQueueTail(void);
 TCB* getReadyQueueHead(void);
 void setReadyQueueHead(TCB*);

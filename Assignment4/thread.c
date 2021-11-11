@@ -71,11 +71,20 @@ long thread_create(void (*work)(void*) , void* arg){
         readyQueueHead = malloc(sizeof(TCB)); // does the main thread even need its own stack? don't think so
         readyQueueHead->next = NULL;
         readyQueueHead->stackPtr = malloc(65536);
+        readyQueueHead->rsp = 0;
+        readyQueueHead->rdi = 0;
+        readyQueueHead->rsi = 0;
+        readyQueueHead->rbx = 0;
+        readyQueueHead->r12 = 0;
+        readyQueueHead->r13 = 0;
+        readyQueueHead->r14 = 0;
+        readyQueueHead->r15 = 0;
+        readyQueueHead->heldMutex = NULL;
     }
-    printf("threadStart addr: %lx", (long) threadStart);
+    printf("threadStart addr: %lx\n", (long) threadStart);
     TCB* newTCB = malloc(sizeof(TCB));
     newTCB->next = NULL;
-    newTCB->stackPtr = (long*) malloc(65536);
+    newTCB->stackPtr = malloc(65536);
     *(newTCB->stackPtr) = 0;
     *(newTCB->stackPtr+1) = (long) threadStart; //<-THIS IS THE ADDRESS THAT GETS RETURNED TO AFTER ASM YIELD COMPLETES
     *(newTCB->stackPtr+2) = 0;
@@ -98,11 +107,19 @@ long thread_create(void (*work)(void*) , void* arg){
 
 void thread_yield(void){
     if (readyQueueHead == NULL){
-        //make TCB for main thread
-        printf("making new TCB for main thread\n");
-        readyQueueHead = malloc(sizeof(TCB));
+                //make TCB for main thread
+        readyQueueHead = malloc(sizeof(TCB)); // does the main thread even need its own stack? don't think so
         readyQueueHead->next = NULL;
         readyQueueHead->stackPtr = malloc(65536);
+        readyQueueHead->rsp = 0;
+        readyQueueHead->rdi = 0;
+        readyQueueHead->rsi = 0;
+        readyQueueHead->rbx = 0;
+        readyQueueHead->r12 = 0;
+        readyQueueHead->r13 = 0;
+        readyQueueHead->r14 = 0;
+        readyQueueHead->r15 = 0;
+        readyQueueHead->heldMutex = NULL;
     }
     if (readyQueueHead->next == NULL) {
         //only 1 thread active, continue execution of current thread
@@ -111,11 +128,12 @@ void thread_yield(void){
     }
 
     TCB* curTCB = readyQueueHead;
-    readyQueueHead = curTCB->next;
-    getReadyQueueTail()->next = curTCB;
+    readyQueueHead = readyQueueHead->next;
     curTCB->next = NULL;
-    printf("calling asm_yield with curTid %ld and nextTid %ld\n", (long) curTCB, (long) readyQueueHead);
-    printf("ready list head: %ld, ready list tail: %ld\n", (long) getReadyQueueHead(), (long)getReadyQueueTail());
+    getReadyQueueTail()->next = curTCB;    
+    //printf("calling asm_yield with curTid %ld and nextTid %ld\n", (long) curTCB, (long) readyQueueHead);
+    //printf("ready list head: %ld, ready list tail: %ld\n", (long) getReadyQueueHead(), (long)getReadyQueueTail());
+    printf("old head next: %ld\n", (long) curTCB->next);
     asm_yield(curTCB, readyQueueHead);
 }
 
