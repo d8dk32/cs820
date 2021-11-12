@@ -82,13 +82,14 @@ long thread_create(void (*work)(void*) , void* arg){
         readyQueueHead->heldMutex = NULL;
     }
     printf("threadStart addr: %lx\n", (long) threadStart);
+    long* temp = malloc(65536);
     TCB* newTCB = malloc(sizeof(TCB));
     newTCB->next = NULL;
-    newTCB->stackPtr = malloc(65536);
+    newTCB->stackPtr = temp+8190;
     *(newTCB->stackPtr) = 0;
     *(newTCB->stackPtr+1) = (long) threadStart; //<-THIS IS THE ADDRESS THAT GETS RETURNED TO AFTER ASM YIELD COMPLETES
     *(newTCB->stackPtr+2) = 0;
-    newTCB->rsp = (long) newTCB->stackPtr;
+    newTCB->rsp = (long) newTCB->stackPtr+0;
     newTCB->rdi = (long) work;
     newTCB->rsi = (long) arg;
     //dumping 0 into the rest of the slots - is this needed?
@@ -100,7 +101,6 @@ long thread_create(void (*work)(void*) , void* arg){
     newTCB->heldMutex = NULL;
 
     getReadyQueueTail()->next = newTCB;    
-    //set up thread's stack
 
     return (long) newTCB;
 }
@@ -130,7 +130,7 @@ void thread_yield(void){
     TCB* curTCB = readyQueueHead;
     readyQueueHead = readyQueueHead->next;
     curTCB->next = NULL;
-    getReadyQueueTail()->next = curTCB;    
+    getReadyQueueTail()->next = curTCB;  
     //printf("calling asm_yield with curTid %ld and nextTid %ld\n", (long) curTCB, (long) readyQueueHead);
     //printf("ready list head: %ld, ready list tail: %ld\n", (long) getReadyQueueHead(), (long)getReadyQueueTail());
     printf("old head next: %ld\n", (long) curTCB->next);

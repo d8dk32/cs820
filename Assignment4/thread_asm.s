@@ -50,7 +50,7 @@ asm_yield_cleanup:
     movq 0x38(%rsi), %r15
     movq 0x10(%rsi), %rsi
     
-    #movq (%rsi), %rsp #done on line 21
+    #movq (%rsi), %rsp #done on line 44
     popq %rbp
     ret
 
