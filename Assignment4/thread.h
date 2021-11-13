@@ -22,7 +22,8 @@ struct TCB {
     long r13;
     long r14;
     long r15;
-    long* stackPtr; // something to always hold the bottom of the stack. Feels like it might be handy
+    long* stackPtr; //this was supposed to serve the purpose of stackBottom but I had to do some finagling with creating the stack and here we are. Whatever works.
+    long* stackBottom; // something to always hold the bottom of the stack. Needed to 'free' at the end
     TCB* next;
     thread_mutex_t* heldMutex;
 };

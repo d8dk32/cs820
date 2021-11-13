@@ -3,15 +3,6 @@
 #include "thread.h"
 
 // some utility functions for testing---------------------------------------------------------------
-void deleteAllThreads(){
-    //don't call this from anywhere but the main thread
-    while(readyQueueLength() > 0){
-        TCB* toDelete = getReadyQueueHead();
-        setReadyQueueHead(getReadyQueueHead()->next);
-        free(toDelete->stackPtr);
-        free(toDelete);
-    }
-}
 
 void printTCB(TCB* tcb){
     printf("\nTCB: 0x%lx\n", (long) tcb);
@@ -42,21 +33,10 @@ void printReadyQueue(int withDetails){
     printf("\n");
 }
 
-void printTCBStack(TCB* tcb, long x){
-    //prints the first x entries in tcb's stack
-    printf("\nTCB-%ld's stack:\n", (long) tcb);
-    int i = 0;
-    while(i < x){
-        printf("Addr: %ld, Value: %ld\n", (long) tcb->stackPtr+i, (long) (*(tcb->stackPtr+i)));
-        i++;
-    }
-}
-
-
 // various work functions for testing different scenarios----------------------------------------------
 void simpleWorkFunc(){
     //just something simple for now
-    printf("working...\n");
+    printf("simple work func is working...\n");
     //printReadyQueue();
 }
 
@@ -71,64 +51,103 @@ void singleChildYieldsBeforeCompleting() {
     printf("last line of child thread\n");
 }
 
+void childThreadCreatesAnotherThread() {
+    printReadyQueue(0);
+    printf("This child thread is about to create a thread. Look out!\n");
+    thread_create(simpleWorkFunc, NULL);
+    printReadyQueue(0);
+    thread_yield();
+    printf("Original Child has reached its end\n");
+
+}
+
+void simpleFuncWithArg(void* arg) {
+    int intArg = *((int*) arg);
+    printf("The argument to this simple func is: %d\n", intArg);
+}
+
 //test runner-------------------------------------
 int main(int argc, char** argv){
-    // printf("sizeof long: %ld bytes\n", sizeof(long));
-    // //test creating some threads 
-    // // - TCB for main thread should be created
-    // // - threads should be added to ready queue
-    // printf("Ready queue length: %d - Expected: 0\n", readyQueueLength());
-    // long tid1 = thread_create(simpleWorkFunc, NULL);
-    // printf("tail = tid1: %s\n", tid1 == (long) getReadyQueueTail() ? "true" : "false");
-    // printf("Ready queue length: %d - Expected: 2\n", readyQueueLength());
-    // long tid2 = thread_create(simpleWorkFunc, NULL);
-    // printf("tail = tid2: %s\n", tid2 == (long) getReadyQueueTail() ? "true" : "false");
-    // printf("Ready queue length: %d - Expected: 3\n", readyQueueLength());
 
-    // //cleanup threads before next test
-    // deleteAllThreads();
-    // printf("----------------------------------\n");
+    if (argc != 2){
+        printf("no test number specified\n");
+        return -1;
+    }
 
-    // //tests around thread yield
-    // // - test that first call to thread yield creates TCB for main thread
-    // // - test that if there's only 1 thread it just continues on yield
-    // printf("Ready queue length: %d - Expected: 0\n", readyQueueLength());
-    // thread_yield();
-    // printf("Ready queue length: %d - Expected: 1\n", readyQueueLength());
-    // thread_yield();
-    // printf("Ready queue length: %d - Expected: 1\n", readyQueueLength());
+    int testNum = atoi(argv[1]);
 
-    // //cleanup threads before next test
-    // deleteAllThreads();
-    // printf("----------------------------------\n");
+    if(testNum == 1){
 
-    // //test creating a single child thread which the main thread yields to. 
-    // // the child thread should complete and return priority to the parent thread
-    // long tid3 = thread_create(simpleWorkFunc, NULL);
-    // printf("Ready queue length: %d - Expected: 2\n", readyQueueLength());
-    // //printTCB(getReadyQueueHead());
-    // //printTCBStack(getReadyQueueHead(), 3);
-    // //printTCB(getReadyQueueHead()->next);
-    // //printTCBStack(getReadyQueueHead()->next, 3);
-    // printReadyQueue();
-    // thread_yield();
-    // printf("child thread complete, execution returned to main thread\n");
-    // printReadyQueue();
+        printf("sizeof long: %ld bytes\n", sizeof(long));
+        //test creating some threads 
+        // - TCB for main thread should be created
+        // - threads should be added to ready queue
+        printf("Ready queue length: %d - Expected: 0\n", readyQueueLength());
+        long tid1 = thread_create(simpleWorkFunc, NULL);
+        printf("tail = tid1: %s\n", tid1 == (long) getReadyQueueTail() ? "true" : "false");
+        printf("Ready queue length: %d - Expected: 2\n", readyQueueLength());
+        long tid2 = thread_create(simpleWorkFunc, NULL);
+        printf("tail = tid2: %s\n", tid2 == (long) getReadyQueueTail() ? "true" : "false");
+        printf("Ready queue length: %d - Expected: 3\n", readyQueueLength());
 
-    // //cleanup threads before next test
-    // deleteAllThreads();
-    // printf("----------------------------------\n");
+    } else if (testNum == 2){
 
-    long tid4 = thread_create(singleChildYieldsBeforeCompleting, NULL);
-    long tid5 = thread_create(singleChildYieldsBeforeCompleting, NULL);
-    printReadyQueue(1);
-    //printTCB(getReadyQueueHead());
-    //printTCB((TCB*) tid4);
-    thread_yield();
-    printf("child thread yielded back\n");
-    printReadyQueue(1);
-    thread_yield();
-    printf("another yield\n");
-    thread_yield();
-    printf("child thread complete, execution returned to main thread\n");
+        //tests around thread yield
+        // - test that first call to thread yield creates TCB for main thread
+        // - test that if there's only 1 thread it just continues on yield
+        printf("Ready queue length: %d - Expected: 0\n", readyQueueLength());
+        thread_yield();
+        printf("Ready queue length: %d - Expected: 1\n", readyQueueLength());
+        thread_yield();
+        printf("Ready queue length: %d - Expected: 1\n", readyQueueLength());
+
+    } else if (testNum == 3) {
+
+        //test creating a single child thread which the main thread yields to. 
+        // the child thread should complete and return priority to the parent thread
+        long tid3 = thread_create(simpleWorkFunc, NULL);
+        printf("Ready queue length: %d - Expected: 2\n", readyQueueLength());
+        //printTCB(getReadyQueueHead());
+        //printTCBStack(getReadyQueueHead(), 3);
+        //printTCB(getReadyQueueHead()->next);
+        //printTCBStack(getReadyQueueHead()->next, 3);
+        printReadyQueue(0);
+        thread_yield();
+        printf("child thread complete, execution returned to main thread\n");
+        printReadyQueue(0);
+
+    } else if (testNum == 4) {
+
+        long tid4 = thread_create(singleChildYieldsBeforeCompleting, NULL);
+        long tid5 = thread_create(singleChildYieldsBeforeCompleting, NULL);
+        printReadyQueue(0);
+        //printTCB(getReadyQueueHead());
+        //printTCB((TCB*) tid4);
+        thread_yield();
+        printf("child thread yielded back\n");
+        printReadyQueue(0);
+        thread_yield();
+        printf("another yield\n");
+        thread_yield();
+        printf("child thread complete, execution returned to main thread\n");
+    } else if (testNum == 5){
+        long tid6 = thread_create(childThreadCreatesAnotherThread, NULL);
+        printf("This thread will have a grandchild\n");
+        thread_yield();
+        printf("Back to main now. The grandchild should kick off next with simpleWorkFunc\n");
+        thread_yield();
+        printf("And back to main again. Both child and grandchild should have ended\n");
+    } else if (testNum == 6) {
+        int arg1 = 1;
+        int arg2 = 2;
+        long tid7 = thread_create(simpleFuncWithArg, &arg1);
+        long tid8 = thread_create(simpleFuncWithArg, &arg2);
+        printf("Lets see if those args work\n");
+        thread_yield();
+        printf("Back to main. Make sure both threads printed out their args.\n");
+    } else {
+        printf("test number %d does not exist\n", testNum);
+    }
+
+
 }

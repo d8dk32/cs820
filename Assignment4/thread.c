@@ -5,7 +5,6 @@
 
 extern void asm_yield(TCB* curTCB, TCB* nextTCB);
 extern void asm_yield_cleanup(TCB* curTCB, TCB* nextTCB);
-//extern void thread_start(void (*work)(void*), void* arg);
 
 TCB* readyQueueHead = NULL;
 
@@ -42,13 +41,13 @@ int readyQueueLength(){
 //the secret primitives - cleanup and threadStart
 void cleanup(){
     //chop the to-be-cleaned-up TCB out of the ready queue
-    printf("made it to cleanup\n");
+    //printf("made it to cleanup\n");
     TCB* cleanupTCB = readyQueueHead;
     readyQueueHead = readyQueueHead->next;
     cleanupTCB->next = NULL;
 
     if(waitingForCleanup != NULL){
-        free(waitingForCleanup->stackPtr);
+        free(waitingForCleanup->stackBottom);
         free(waitingForCleanup);
     } 
     
@@ -59,7 +58,7 @@ void cleanup(){
 
 
 void threadStart(void (*work)(void*) , void* arg){ 
-    printf("starting thread...\n");
+    //printf("starting thread...\n");
     work(arg);
     cleanup();
 }
@@ -68,9 +67,9 @@ long thread_create(void (*work)(void*) , void* arg){
 
     if (readyQueueHead == NULL){
         //make TCB for main thread
-        readyQueueHead = malloc(sizeof(TCB)); // does the main thread even need its own stack? don't think so
+        readyQueueHead = malloc(sizeof(TCB)); 
         readyQueueHead->next = NULL;
-        readyQueueHead->stackPtr = malloc(65536);
+        readyQueueHead->stackPtr = 0; //malloc(65536); // does the main thread even need its own stack? don't think so
         readyQueueHead->rsp = 0;
         readyQueueHead->rdi = 0;
         readyQueueHead->rsi = 0;
@@ -81,15 +80,17 @@ long thread_create(void (*work)(void*) , void* arg){
         readyQueueHead->r15 = 0;
         readyQueueHead->heldMutex = NULL;
     }
-    printf("threadStart addr: %lx\n", (long) threadStart);
+    //printf("threadStart addr: %lx\n", (long) threadStart);
     long* temp = malloc(65536);
     TCB* newTCB = malloc(sizeof(TCB));
+    newTCB->stackBottom = temp;
     newTCB->next = NULL;
-    newTCB->stackPtr = temp+8190;
+    newTCB->stackPtr = temp+8189;
     *(newTCB->stackPtr) = 0;
     *(newTCB->stackPtr+1) = (long) threadStart; //<-THIS IS THE ADDRESS THAT GETS RETURNED TO AFTER ASM YIELD COMPLETES
     *(newTCB->stackPtr+2) = 0;
     newTCB->rsp = (long) newTCB->stackPtr+0;
+
     newTCB->rdi = (long) work;
     newTCB->rsi = (long) arg;
     //dumping 0 into the rest of the slots - is this needed?
@@ -108,9 +109,9 @@ long thread_create(void (*work)(void*) , void* arg){
 void thread_yield(void){
     if (readyQueueHead == NULL){
                 //make TCB for main thread
-        readyQueueHead = malloc(sizeof(TCB)); // does the main thread even need its own stack? don't think so
+        readyQueueHead = malloc(sizeof(TCB)); 
         readyQueueHead->next = NULL;
-        readyQueueHead->stackPtr = malloc(65536);
+        readyQueueHead->stackPtr = 0; //malloc(65536); // does the main thread even need its own stack? don't think so
         readyQueueHead->rsp = 0;
         readyQueueHead->rdi = 0;
         readyQueueHead->rsi = 0;
@@ -123,7 +124,7 @@ void thread_yield(void){
     }
     if (readyQueueHead->next == NULL) {
         //only 1 thread active, continue execution of current thread
-        printf("Only 1 thread exists, continuing execution...\n");
+        //printf("Only 1 thread exists, continuing execution...\n");
         return;
     }
 
@@ -133,7 +134,7 @@ void thread_yield(void){
     getReadyQueueTail()->next = curTCB;  
     //printf("calling asm_yield with curTid %ld and nextTid %ld\n", (long) curTCB, (long) readyQueueHead);
     //printf("ready list head: %ld, ready list tail: %ld\n", (long) getReadyQueueHead(), (long)getReadyQueueTail());
-    printf("old head next: %ld\n", (long) curTCB->next);
+    //printf("old head next: %ld\n", (long) curTCB->next);
     asm_yield(curTCB, readyQueueHead);
 }
 
