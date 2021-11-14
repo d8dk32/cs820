@@ -7,11 +7,20 @@
 // a mutex pointer that I didn't want to add later
 typedef struct thread_mutex_t thread_mutex_t;
 typedef struct TCB TCB;
+typedef struct thread_cond_t thread_cond_t;
 
 struct thread_mutex_t{
+    int initialized;
     int locked; //boolean
     TCB* owner;
+    thread_mutex_t* nextMutex; //there isn't really any kind of a sequence of mutexes, just making a linked list of them so I don't lose any
 }; 
+
+struct thread_cond_t {
+    int initialized;
+    TCB* waitingThread;
+    thread_cond_t* nextCond; ////there isn't really any kind of a sequence of mutexes, just making a linked list of them so I don't lose any
+};
 
 struct TCB {
     long rsp;
@@ -26,6 +35,7 @@ struct TCB {
     long* stackBottom; // something to always hold the bottom of the stack. Needed to 'free' at the end
     TCB* next;
     thread_mutex_t* heldMutex;
+    TCB* waitingThread; //thread waiting (joined) on this thread
 };
 
 // these are the only ones that are *needed* for Part 1 
@@ -34,9 +44,17 @@ void thread_yield(void);
 
 // The primitives for Part 2.
 long thread_self(void); //I did this one already cause it was really simple.
+int thread_join(long);
+
 
 // Some utilities that I thought might be useful to expose, for the purposes of my testing
 TCB* getReadyQueueTail(void);
 TCB* getReadyQueueHead(void);
 void setReadyQueueHead(TCB*);
 int readyQueueLength(void);
+int isThreadAlive(TCB*);
+thread_mutex_t* getMutexListTail();
+thread_cond_t* getCondListTail();
+TCB* getMutexWaitListTail(thread_mutex_t* mutex);
+TCB* getCondWaitListTail(thread_cond_t* cond);
+}

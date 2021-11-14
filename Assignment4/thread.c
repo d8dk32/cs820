@@ -10,9 +10,51 @@ TCB* readyQueueHead = NULL;
 
 TCB* waitingForCleanup = NULL;
 
+TCB* joiningList = NULL; //a list of threads that have been removed from the ready queue via join and are waiting to be awoken
+
+thread_mutex_t* mutexListHead = NULL;
+
+thread_cond_t* condListHead = NULL;
+
 TCB* getReadyQueueTail(){
     if (readyQueueHead == NULL) return NULL;
     TCB* curTCB = readyQueueHead;
+    while(curTCB->next != NULL) {
+        curTCB = curTCB->next;
+    }
+    return curTCB;
+}
+
+thread_mutex_t* getMutexListTail(){
+    if (mutexListHead == NULL) return NULL;
+    thread_mutex_t* curMutex = mutexListHead;
+    while (curMutex->nextMutex != NULL) {
+        curMutex = curMutex->nextMutex;
+    }
+    return curMutex;
+}
+
+thread_cond_t* getCondListTail(){
+    if (condListHead == NULL) return NULL;
+    thread_cond_t* curCond = condListHead;
+    while (curCond->nextCond != NULL) {
+        curCond = curCond->nextCond;
+    }
+    return curCond;
+}
+
+TCB* getMutexWaitListTail(thread_mutex_t* mutex){
+    if (mutex->owner == NULL) return NULL;
+    TCB* curTCB = mutex->owner;
+    while(curTCB->next != NULL) {
+        curTCB = curTCB->next;
+    }
+    return curTCB;
+}
+
+TCB* getCondWaitListTail(thread_cond_t* cond){
+    if (cond->waitingThread == NULL) return NULL;
+    TCB* curTCB = cond->waitingThread;
     while(curTCB->next != NULL) {
         curTCB = curTCB->next;
     }
@@ -36,6 +78,39 @@ int readyQueueLength(){
         curTCB = curTCB->next;
     }
     return len;
+}
+
+int isThreadAlive(TCB* tid){
+    //search the ready queue for the thread
+    if (readyQueueHead == NULL) return 0;
+    TCB* curTCB = readyQueueHead;
+    while(curTCB->next != NULL){
+        if (curTCB == tid) return 1;
+        curTCB = curTCB->next;
+    }
+    //search the wait queues of each mutex
+    if (mutexListHead != NULL){
+        thread_mutex_t* curMutex = mutexListHead;
+        while (curMutex->nextMutex != NULL) {
+            TCB* curTCB = curMutex->owner;
+            while(curTCB->next != NULL){
+                if (curTCB == tid) return 1;
+                curTCB = curTCB->next;
+            }
+        }
+    }
+    //search the wait queues of each cond
+    if (condListHead != NULL){
+        thread_cond_t* curCond = condListHead;
+        while (curCond->nextCond != NULL) {
+            TCB* curTCB = curCond->waitingThread;
+            while(curTCB->next != NULL){
+                if (curTCB == tid) return 1;
+                curTCB = curTCB->next;
+            }
+        }
+    }
+    return 0;
 }
 
 //the secret primitives - cleanup and threadStart
@@ -79,6 +154,7 @@ long thread_create(void (*work)(void*) , void* arg){
         readyQueueHead->r14 = 0;
         readyQueueHead->r15 = 0;
         readyQueueHead->heldMutex = NULL;
+        readyQueueHead->waitingThread = NULL;
     }
     //printf("threadStart addr: %lx\n", (long) threadStart);
     long* temp = malloc(65536);
@@ -100,6 +176,7 @@ long thread_create(void (*work)(void*) , void* arg){
     newTCB->r14 = 0;
     newTCB->r15 = 0;
     newTCB->heldMutex = NULL;
+    newTCB->waitingThread = NULL;
 
     getReadyQueueTail()->next = newTCB;    
 
@@ -140,4 +217,9 @@ void thread_yield(void){
 
 long thread_self(void){
     return (long) readyQueueHead;
+}
+
+int thread_join(long tid){
+    TCB* t = (TCB*) tid;
+
 }
