@@ -58,12 +58,18 @@ void childThreadCreatesAnotherThread() {
     printReadyQueue(0);
     thread_yield();
     printf("Original Child has reached its end\n");
-
 }
 
 void simpleFuncWithArg(void* arg) {
     int intArg = *((int*) arg);
     printf("The argument to this simple func is: %d\n", intArg);
+}
+
+void childThreadJoins(void* arg) {
+    long joinTid = *((long*) arg);
+    printf("This thread will now join on thread %ld\n", joinTid);
+    int j = thread_join(joinTid);
+    printf("Childjoiner thread is back. Join status: %d\n", j);
 }
 
 //test runner-------------------------------------
@@ -145,7 +151,41 @@ int main(int argc, char** argv){
         printf("Lets see if those args work\n");
         thread_yield();
         printf("Back to main. Make sure both threads printed out their args.\n");
-    } else {
+    } else if (testNum == 7) {
+        long tid9 = thread_create(simpleWorkFunc, NULL);
+        printf("main thread should wait for child to finish\n");
+        thread_join(tid9);
+        printf("execution passed back to main\n");
+    } else if (testNum == 8) {
+        long tid10 = thread_create(singleChildYieldsBeforeCompleting, NULL);
+        long tid11 = thread_create(childThreadJoins, &tid10);
+        printf("yielding to first child\n");
+        thread_yield();
+        printf("back to main thread. yielding again\n");
+        thread_yield();
+        printf("back to main once more. yielding again...\n");
+        thread_yield();
+        printf("first child thread should have ended and woken up 2nd child. Yield to it now...\n");
+        thread_yield();
+        printf("back to the main again. Test Over\n");
+    } else if (testNum == 9) {
+        long self = thread_self();
+        printf("testing some join error conditions...\n");
+        int status = thread_join((long) 12345);
+        printf("Join error - expected: %d, actual: %d\n", -3, status);
+        status = thread_join(self);
+        printf("Join error - expected: %d, actual: %d\n", -1, status);
+
+        long tid12 = thread_create(childThreadJoins, &self);
+        thread_yield();
+        status = thread_join(tid12);
+        printf("Join error - expected: %d, actual: %d\n", -1, status); 
+        long tid13 = thread_create(childThreadJoins, &self);
+        thread_yield();
+        printf("child thread should have had a join error of -2\nTest over.\n");
+    }
+    
+    else {
         printf("test number %d does not exist\n", testNum);
     }
 

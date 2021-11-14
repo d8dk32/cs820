@@ -53,8 +53,10 @@ TCB* getReadyQueueHead(void);
 void setReadyQueueHead(TCB*);
 int readyQueueLength(void);
 int isThreadAlive(TCB*);
-thread_mutex_t* getMutexListTail();
-thread_cond_t* getCondListTail();
+thread_mutex_t* getMutexListTail(void);
+thread_cond_t* getCondListTail(void);
 TCB* getMutexWaitListTail(thread_mutex_t* mutex);
 TCB* getCondWaitListTail(thread_cond_t* cond);
-}
+TCB* getJoinWaitListHead(void);
+TCB* getJoinWaitListTail(void);
+

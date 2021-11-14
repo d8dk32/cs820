@@ -25,6 +25,19 @@ TCB* getReadyQueueTail(){
     return curTCB;
 }
 
+TCB* getJoinWaitListHead() {
+    return joiningList;
+}
+
+TCB* getJoinWaitListTail() {
+    if (joiningList == NULL) return NULL;
+    TCB* curTCB = joiningList;
+    while(curTCB->next != NULL) {
+        curTCB = curTCB->next;
+    }
+    return curTCB;
+}
+
 thread_mutex_t* getMutexListTail(){
     if (mutexListHead == NULL) return NULL;
     thread_mutex_t* curMutex = mutexListHead;
@@ -84,33 +97,67 @@ int isThreadAlive(TCB* tid){
     //search the ready queue for the thread
     if (readyQueueHead == NULL) return 0;
     TCB* curTCB = readyQueueHead;
-    while(curTCB->next != NULL){
+    while(curTCB != NULL){
         if (curTCB == tid) return 1;
         curTCB = curTCB->next;
+    }
+    //search the join waitlist
+    if (joiningList != NULL){
+        TCB* curTCB = joiningList;
+        while (curTCB != NULL){
+            if (curTCB == tid) return 1;
+            curTCB = curTCB->next;
+        }
     }
     //search the wait queues of each mutex
     if (mutexListHead != NULL){
         thread_mutex_t* curMutex = mutexListHead;
-        while (curMutex->nextMutex != NULL) {
+        while (curMutex != NULL) {
             TCB* curTCB = curMutex->owner;
-            while(curTCB->next != NULL){
+            while(curTCB != NULL){
                 if (curTCB == tid) return 1;
                 curTCB = curTCB->next;
             }
+            curMutex = curMutex->nextMutex;
         }
     }
     //search the wait queues of each cond
     if (condListHead != NULL){
         thread_cond_t* curCond = condListHead;
-        while (curCond->nextCond != NULL) {
+        while (curCond != NULL) {
             TCB* curTCB = curCond->waitingThread;
-            while(curTCB->next != NULL){
+            while(curTCB != NULL){
                 if (curTCB == tid) return 1;
                 curTCB = curTCB->next;
             }
+            curCond = curCond->nextCond;
         }
     }
+    
     return 0;
+}
+
+void wakeupThread(TCB* t){
+    //wakes up the specified thread, i.e. removes it from the waiting-list and appends it to the ready queue
+    //should do nothing if the thread doesn't exist
+    if (t == NULL) return;
+
+    if (joiningList == t){
+        getReadyQueueTail()->next = t;
+        joiningList = t->next;
+        t->next = NULL;
+    } else {
+        TCB* curTCB = joiningList;
+        while(curTCB->next != t){
+            curTCB = curTCB->next;
+        }
+        TCB* awokenTCB = curTCB->next;
+        if (awokenTCB != NULL){
+            curTCB->next = awokenTCB->next;
+            getReadyQueueTail()->next = awokenTCB;
+            awokenTCB->next = NULL;
+        }
+    }
 }
 
 //the secret primitives - cleanup and threadStart
@@ -118,6 +165,7 @@ void cleanup(){
     //chop the to-be-cleaned-up TCB out of the ready queue
     //printf("made it to cleanup\n");
     TCB* cleanupTCB = readyQueueHead;
+    wakeupThread(cleanupTCB->waitingThread);
     readyQueueHead = readyQueueHead->next;
     cleanupTCB->next = NULL;
 
@@ -138,8 +186,7 @@ void threadStart(void (*work)(void*) , void* arg){
     cleanup();
 }
 
-long thread_create(void (*work)(void*) , void* arg){
-
+void createMainThreadIfNeeded(){
     if (readyQueueHead == NULL){
         //make TCB for main thread
         readyQueueHead = malloc(sizeof(TCB)); 
@@ -156,6 +203,12 @@ long thread_create(void (*work)(void*) , void* arg){
         readyQueueHead->heldMutex = NULL;
         readyQueueHead->waitingThread = NULL;
     }
+}
+
+long thread_create(void (*work)(void*) , void* arg){
+
+    createMainThreadIfNeeded();
+    
     //printf("threadStart addr: %lx\n", (long) threadStart);
     long* temp = malloc(65536);
     TCB* newTCB = malloc(sizeof(TCB));
@@ -184,21 +237,9 @@ long thread_create(void (*work)(void*) , void* arg){
 }
 
 void thread_yield(void){
-    if (readyQueueHead == NULL){
-                //make TCB for main thread
-        readyQueueHead = malloc(sizeof(TCB)); 
-        readyQueueHead->next = NULL;
-        readyQueueHead->stackPtr = 0; //malloc(65536); // does the main thread even need its own stack? don't think so
-        readyQueueHead->rsp = 0;
-        readyQueueHead->rdi = 0;
-        readyQueueHead->rsi = 0;
-        readyQueueHead->rbx = 0;
-        readyQueueHead->r12 = 0;
-        readyQueueHead->r13 = 0;
-        readyQueueHead->r14 = 0;
-        readyQueueHead->r15 = 0;
-        readyQueueHead->heldMutex = NULL;
-    }
+    
+    createMainThreadIfNeeded();
+
     if (readyQueueHead->next == NULL) {
         //only 1 thread active, continue execution of current thread
         //printf("Only 1 thread exists, continuing execution...\n");
@@ -216,10 +257,33 @@ void thread_yield(void){
 }
 
 long thread_self(void){
+    createMainThreadIfNeeded();
     return (long) readyQueueHead;
 }
 
 int thread_join(long tid){
+    
+    createMainThreadIfNeeded();
+
     TCB* t = (TCB*) tid;
+
+    //Error Checking
+    if (t == NULL || isThreadAlive(t) == 0) return -3; //can't join a dead thread
+    if (tid == thread_self()) return -1; //can't join yourself
+    if ( ((TCB*) thread_self())->waitingThread == t) return -1; // prevent simple circular join
+    if ( t->waitingThread != NULL) return -2; //"• -2: Another thread is already waiting to join with this thread."
+
+    //the meat of Join
+    TCB* runningThread = readyQueueHead;
+    readyQueueHead = readyQueueHead->next;
+    t->waitingThread = runningThread;
+    if(joiningList == NULL) {
+        joiningList = runningThread;
+    } else {
+        getJoinWaitListTail()->next = runningThread;
+    }
+    asm_yield(runningThread, readyQueueHead);
+
+    return 0;
 
 }
