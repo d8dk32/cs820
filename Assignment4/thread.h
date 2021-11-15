@@ -10,14 +10,12 @@ typedef struct TCB TCB;
 typedef struct thread_cond_t thread_cond_t;
 
 struct thread_mutex_t{
-    int initialized;
-    int locked; //boolean
     TCB* owner;
+    TCB* waitList;
     thread_mutex_t* nextMutex; //there isn't really any kind of a sequence of mutexes, just making a linked list of them so I don't lose any
 }; 
 
 struct thread_cond_t {
-    int initialized;
     TCB* waitingThread;
     thread_cond_t* nextCond; ////there isn't really any kind of a sequence of mutexes, just making a linked list of them so I don't lose any
 };
@@ -45,6 +43,14 @@ void thread_yield(void);
 // The primitives for Part 2.
 long thread_self(void); //I did this one already cause it was really simple.
 int thread_join(long);
+
+int thread_mutex_init(thread_mutex_t *mutex);
+int thread_mutex_lock(thread_mutex_t *mutex);
+int thread_mutex_unlock(thread_mutex_t *mutex);
+
+int thread_cond_init(thread_cond_t *cond);
+int thread_cond_wait(thread_cond_t *cond, thread_mutex_t *mutex);
+int thread_cond_signal(thread_cond_t *cond);
 
 
 // Some utilities that I thought might be useful to expose, for the purposes of my testing

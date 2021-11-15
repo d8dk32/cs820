@@ -57,8 +57,8 @@ thread_cond_t* getCondListTail(){
 }
 
 TCB* getMutexWaitListTail(thread_mutex_t* mutex){
-    if (mutex->owner == NULL) return NULL;
-    TCB* curTCB = mutex->owner;
+    if (mutex->waitList == NULL) return NULL;
+    TCB* curTCB = mutex->waitList;
     while(curTCB->next != NULL) {
         curTCB = curTCB->next;
     }
@@ -113,7 +113,7 @@ int isThreadAlive(TCB* tid){
     if (mutexListHead != NULL){
         thread_mutex_t* curMutex = mutexListHead;
         while (curMutex != NULL) {
-            TCB* curTCB = curMutex->owner;
+            TCB* curTCB = curMutex->waitList;
             while(curTCB != NULL){
                 if (curTCB == tid) return 1;
                 curTCB = curTCB->next;
@@ -287,3 +287,69 @@ int thread_join(long tid){
     return 0;
 
 }
+
+int thread_mutex_init(thread_mutex_t *mutex){
+
+    createMainThreadIfNeeded();
+
+    if (mutex == NULL) return 0;
+
+    mutex->nextMutex = NULL;
+    mutex->owner = NULL;
+    mutex->waitList = NULL;
+
+    if (mutexListHead == NULL){
+        mutexListHead = mutex;
+    } else {
+        getMutexListTail()->nextMutex = mutex;
+    }
+
+    return 1;
+}
+
+int thread_mutex_lock(thread_mutex_t *mutex){
+    createMainThreadIfNeeded();
+    if (mutex == NULL) return 0;
+    if ((long) mutex->owner == thread_self()) return 0;
+
+    if (mutex->owner == NULL){
+        mutex->owner = readyQueueHead;
+        readyQueueHead->heldMutex = mutex;
+        return 1;
+    } else {
+        TCB* blockedTCB = readyQueueHead;
+        readyQueueHead = readyQueueHead->next;
+        blockedTCB->next = NULL;
+        if (mutex->waitList == NULL){
+            mutex->waitList = blockedTCB;
+        } else {
+            getMutexWaitListTail(mutex)->next = blockedTCB;
+        }
+        asm_yield(blockedTCB, readyQueueHead);
+        return 1;
+    }
+}
+
+int thread_mutex_unlock(thread_mutex_t *mutex){
+    createMainThreadIfNeeded();
+
+    if (mutex == NULL) return 0;
+    if (mutex->owner == NULL) return 0;
+    if (mutex->owner != (TCB*) thread_self()) return 0;
+
+    mutex->owner->heldMutex = NULL;
+    TCB* newOwner = mutex->waitList;
+    
+    if (newOwner != NULL) {
+        mutex->waitList = mutex->waitList->next;
+        newOwner->heldMutex = mutex;
+        mutex->owner = newOwner;
+        newOwner->next = NULL;
+        getReadyQueueTail()->next = newOwner;
+    } else {
+        mutex->owner = NULL;
+        mutex->waitList = NULL;
+    }
+    return 1;
+}
+

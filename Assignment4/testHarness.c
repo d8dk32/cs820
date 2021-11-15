@@ -72,6 +72,15 @@ void childThreadJoins(void* arg) {
     printf("Childjoiner thread is back. Join status: %d\n", j);
 }
 
+void childThreadLocksAndReleases(void* arg) {
+    thread_mutex_t* mu = (thread_mutex_t*) arg;
+    printf("locking on the mutex\n");
+    thread_mutex_lock(mu);
+    printf("got the lock\n");
+    thread_mutex_unlock(mu);
+    printf("released the lock\n");
+}
+
 //test runner-------------------------------------
 int main(int argc, char** argv){
 
@@ -183,6 +192,28 @@ int main(int argc, char** argv){
         long tid13 = thread_create(childThreadJoins, &self);
         thread_yield();
         printf("child thread should have had a join error of -2\nTest over.\n");
+    } else if (testNum == 10) {
+        thread_mutex_t mutex1, mutex2;
+        int mu1 = thread_mutex_init(&mutex1);
+        int mu2 = thread_mutex_init(&mutex2);
+        int mu3 = thread_mutex_init(NULL);
+
+        printf("%lx -> %lx -> %lx\n", (long) &mutex1, (long) mutex1.nextMutex, (long) mutex1.nextMutex->nextMutex);
+        printf("Statuses: %d, %d, %d\n", mu1, mu2, mu3);
+
+    } else if (testNum == 11) {
+        thread_mutex_t mu;
+        int m1 = thread_mutex_init(&mu);
+        long tid14 = thread_create(childThreadLocksAndReleases, &mu);
+        thread_mutex_init(&mu);
+        printf("main thread locking on mutex\n");
+        int lock = thread_mutex_lock(&mu);
+        printf("Lock status: %d. Yielding to child\n", lock);
+        thread_yield();
+        printf("back to main. releasing lock and yielding\n");
+        thread_mutex_unlock(&mu);
+        thread_yield();
+        printf("Execution returned to main. test over\n");
     }
     
     else {
