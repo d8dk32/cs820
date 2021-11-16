@@ -32,8 +32,8 @@ struct TCB {
     long* stackPtr; //this was supposed to serve the purpose of stackBottom but I had to do some finagling with creating the stack and here we are. Whatever works.
     long* stackBottom; // something to always hold the bottom of the stack. Needed to 'free' at the end
     TCB* next;
-    thread_mutex_t* heldMutex;
     TCB* waitingThread; //thread waiting (joined) on this thread
+    thread_mutex_t* condVarMutex;
 };
 
 // these are the only ones that are *needed* for Part 1 
@@ -65,4 +65,5 @@ TCB* getMutexWaitListTail(thread_mutex_t* mutex);
 TCB* getCondWaitListTail(thread_cond_t* cond);
 TCB* getJoinWaitListHead(void);
 TCB* getJoinWaitListTail(void);
+
 

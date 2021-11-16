@@ -200,8 +200,8 @@ void createMainThreadIfNeeded(){
         readyQueueHead->r13 = 0;
         readyQueueHead->r14 = 0;
         readyQueueHead->r15 = 0;
-        readyQueueHead->heldMutex = NULL;
         readyQueueHead->waitingThread = NULL;
+        readyQueueHead->condVarMutex = NULL;
     }
 }
 
@@ -228,8 +228,8 @@ long thread_create(void (*work)(void*) , void* arg){
     newTCB->r13 = 0;
     newTCB->r14 = 0;
     newTCB->r15 = 0;
-    newTCB->heldMutex = NULL;
     newTCB->waitingThread = NULL;
+    newTCB->condVarMutex = NULL;
 
     getReadyQueueTail()->next = newTCB;    
 
@@ -272,10 +272,12 @@ int thread_join(long tid){
     if (tid == thread_self()) return -1; //can't join yourself
     if ( ((TCB*) thread_self())->waitingThread == t) return -1; // prevent simple circular join
     if ( t->waitingThread != NULL) return -2; //"• -2: Another thread is already waiting to join with this thread."
+    if ( readyQueueLength() == 1) return -1; //prevent another type of deadlock - all threads trying to join on another
 
     //the meat of Join
     TCB* runningThread = readyQueueHead;
     readyQueueHead = readyQueueHead->next;
+    runningThread->next = NULL;
     t->waitingThread = runningThread;
     if(joiningList == NULL) {
         joiningList = runningThread;
@@ -314,7 +316,6 @@ int thread_mutex_lock(thread_mutex_t *mutex){
 
     if (mutex->owner == NULL){
         mutex->owner = readyQueueHead;
-        readyQueueHead->heldMutex = mutex;
         return 1;
     } else {
         TCB* blockedTCB = readyQueueHead;
@@ -337,18 +338,75 @@ int thread_mutex_unlock(thread_mutex_t *mutex){
     if (mutex->owner == NULL) return 0;
     if (mutex->owner != (TCB*) thread_self()) return 0;
 
-    mutex->owner->heldMutex = NULL;
     TCB* newOwner = mutex->waitList;
     
     if (newOwner != NULL) {
         mutex->waitList = mutex->waitList->next;
-        newOwner->heldMutex = mutex;
         mutex->owner = newOwner;
         newOwner->next = NULL;
         getReadyQueueTail()->next = newOwner;
     } else {
         mutex->owner = NULL;
         mutex->waitList = NULL;
+    }
+    return 1;
+}
+
+int thread_cond_init(thread_cond_t *cond){
+     createMainThreadIfNeeded();
+
+    if (cond == NULL) return 0;
+
+    cond->nextCond = NULL;
+    cond->waitingThread = NULL;
+
+    if (condListHead == NULL){
+        condListHead = cond;
+    } else {
+        getCondListTail()->nextCond = cond;
+    }
+
+    return 1;
+}
+
+int thread_cond_wait(thread_cond_t *cond, thread_mutex_t *mutex) {
+    if (mutex == NULL || cond == NULL) return 0;
+    if (thread_mutex_unlock(mutex) == 0) return 0;
+
+    TCB* blockingThread = readyQueueHead;
+    readyQueueHead = readyQueueHead->next;
+    blockingThread->next = NULL;
+    blockingThread->condVarMutex = mutex;
+
+    if (cond->waitingThread == NULL) {
+        cond->waitingThread = blockingThread;
+    } else {
+        getCondWaitListTail(cond)->next = blockingThread;
+    }
+
+    asm_yield(blockingThread, readyQueueHead);
+    return 1;
+}
+
+int thread_cond_signal(thread_cond_t *cond){
+    if (cond == NULL) return 0;
+    if (cond->waitingThread == NULL) return 1;
+
+    thread_mutex_t* mu = cond->waitingThread->condVarMutex;
+    TCB* signalledThread = cond->waitingThread;
+    cond->waitingThread = cond->waitingThread->next;
+    signalledThread->next = NULL;
+
+    if (mu->owner == NULL){
+        mu->owner = signalledThread;
+        getReadyQueueTail()->next = signalledThread;
+    } else {
+        TCB* muWaitTail = getMutexWaitListTail(mu);
+        if (muWaitTail == NULL){
+            mu->waitList = signalledThread;
+        } else {
+            muWaitTail->next = signalledThread;
+        }
     }
     return 1;
 }

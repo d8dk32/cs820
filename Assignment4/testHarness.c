@@ -16,7 +16,6 @@ void printTCB(TCB* tcb){
     printf(" - r15: 0x%lx\n", tcb->r15);
     printf(" - next: 0x%lx\n", (long) tcb->next);
     printf(" - stackPtr: 0x%lx\n", (long) tcb->stackPtr);
-    printf(" - heldMutex: 0x%lx\n", (long) tcb->heldMutex);
 }
 
 void printReadyQueue(int withDetails){
@@ -38,6 +37,12 @@ void simpleWorkFunc(){
     //just something simple for now
     printf("simple work func is working...\n");
     //printReadyQueue();
+}
+
+void childSimplyYields(){
+    printf("I'm simply gonna yield...\n");
+    thread_yield();
+    printf("back after simply yielding. Done now.\n");
 }
 
 void singleChildYieldsBeforeCompleting() {
@@ -214,6 +219,32 @@ int main(int argc, char** argv){
         thread_mutex_unlock(&mu);
         thread_yield();
         printf("Execution returned to main. test over\n");
+    } else if (testNum == 12) {
+        long tid0 = thread_create(childSimplyYields, NULL);
+        long tid1 = thread_create(childThreadJoins, &tid0);
+        long tid2 = thread_create(childThreadJoins, &tid1);
+        long tid3 = thread_create(childThreadJoins, &tid2);
+        printf("tid0: %ld, tid1: %ld, tid2: %ld, tid3: %ld\n", tid0, tid1, tid2, tid3);
+        int join = thread_join(tid3);
+        thread_yield();
+        printf("Main is back. join status: %d\n", join);
+    } else if (testNum == 13) {
+        thread_mutex_t mu1, mu2;
+        thread_mutex_init(&mu1);
+        thread_mutex_init(&mu2);
+        long tid1 = thread_create(childThreadLocksAndReleases, &mu1);
+        long tid2 = thread_create(childThreadLocksAndReleases, &mu2);
+        thread_mutex_lock(&mu1);
+        thread_mutex_lock(&mu2);
+        printf("first yield\n");
+        thread_yield();
+        thread_mutex_unlock(&mu2);
+        printf("2nd yield\n");
+        thread_yield();
+        thread_mutex_unlock(&mu1);
+        printf("3rd yield\n");
+        thread_yield();
+        printf("test over\n");
     }
     
     else {
