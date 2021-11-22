@@ -8,6 +8,7 @@
 typedef struct thread_mutex_t thread_mutex_t;
 typedef struct TCB TCB;
 typedef struct thread_cond_t thread_cond_t;
+typedef struct threadExistenceRecord threadExistenceRecord;
 
 struct thread_mutex_t{
     TCB* owner;
@@ -18,6 +19,12 @@ struct thread_mutex_t{
 struct thread_cond_t {
     TCB* waitingThread;
     thread_cond_t* nextCond; ////there isn't really any kind of a sequence of mutexes, just making a linked list of them so I don't lose any
+};
+
+struct threadExistenceRecord {
+    long tid;
+    int terminated;
+    threadExistenceRecord* next;
 };
 
 struct TCB {
@@ -66,4 +73,4 @@ TCB* getCondWaitListTail(thread_cond_t* cond);
 TCB* getJoinWaitListHead(void);
 TCB* getJoinWaitListTail(void);
 
-
+void printTERs(void);

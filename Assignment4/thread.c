@@ -16,6 +16,8 @@ thread_mutex_t* mutexListHead = NULL;
 
 thread_cond_t* condListHead = NULL;
 
+threadExistenceRecord* terList = NULL;
+
 TCB* getReadyQueueTail(){
     if (readyQueueHead == NULL) return NULL;
     TCB* curTCB = readyQueueHead;
@@ -93,7 +95,37 @@ int readyQueueLength(){
     return len;
 }
 
+void printTERs(){
+    printf("Thread Existence Records: \n");
+    threadExistenceRecord* curTer = terList;
+    while(curTer != NULL){
+        printf("%ld -> ", curTer->tid);
+        curTer = curTer->next;
+    }
+    printf("EOL\n");
+}
+
+threadExistenceRecord* findTER(long tid){
+    threadExistenceRecord* curTer = terList;
+
+    while(curTer != NULL) {
+        if (curTer->tid == tid) return curTer;
+        curTer = curTer->next;
+    }
+    return NULL;
+}
+
 int isThreadAlive(TCB* tid){
+    long seekingTid = (long) tid;
+
+    threadExistenceRecord* ter = findTER(seekingTid);
+    if (ter == NULL) return 0;
+    if (ter->terminated == 1) return 0;
+    return 1;
+}
+
+/*
+int old_isThreadAlive(TCB* tid){
     //search the ready queue for the thread
     if (readyQueueHead == NULL) return 0;
     TCB* curTCB = readyQueueHead;
@@ -136,6 +168,7 @@ int isThreadAlive(TCB* tid){
     
     return 0;
 }
+*/
 
 void wakeupThread(TCB* t){
     //wakes up the specified thread, i.e. removes it from the waiting-list and appends it to the ready queue
@@ -168,6 +201,9 @@ void cleanup(){
     wakeupThread(cleanupTCB->waitingThread);
     readyQueueHead = readyQueueHead->next;
     cleanupTCB->next = NULL;
+    
+    threadExistenceRecord* ter = findTER((long) cleanupTCB);
+    ter->terminated = 1;
 
     if(waitingForCleanup != NULL){
         free(waitingForCleanup->stackBottom);
@@ -202,6 +238,11 @@ void createMainThreadIfNeeded(){
         readyQueueHead->r15 = 0;
         readyQueueHead->waitingThread = NULL;
         readyQueueHead->condVarMutex = NULL;
+
+        terList = malloc(sizeof(threadExistenceRecord));
+        terList->next = NULL;
+        terList->tid = (long) readyQueueHead;
+        terList->terminated = 0;
     }
 }
 
@@ -230,6 +271,14 @@ long thread_create(void (*work)(void*) , void* arg){
     newTCB->r15 = 0;
     newTCB->waitingThread = NULL;
     newTCB->condVarMutex = NULL;
+
+    //-----------------------------------------------------------------------
+    threadExistenceRecord* ter = malloc(sizeof(threadExistenceRecord));
+    ter->tid = (long) newTCB;
+    ter->next = terList;
+    ter->terminated = 0;
+    terList = ter;
+    //-----------------------------------------------------------------------
 
     getReadyQueueTail()->next = newTCB;    
 
@@ -268,14 +317,19 @@ int thread_join(long tid){
     TCB* t = (TCB*) tid;
 
     //Error Checking
-    if (t == NULL || isThreadAlive(t) == 0) return -3; //can't join a dead thread
+    if (t == NULL) return -3;
+    if (isThreadAlive(t) == 0) return -3; //can't join a dead thread
     if (tid == thread_self()) return -1; //can't join yourself
-    if ( ((TCB*) thread_self())->waitingThread == t) return -1; // prevent simple circular join
     if ( t->waitingThread != NULL) return -2; //"• -2: Another thread is already waiting to join with this thread."
+    if ( ((TCB*) thread_self())->waitingThread == t) return -1; // prevent simple circular join
     if ( readyQueueLength() == 1) return -1; //prevent another type of deadlock - all threads trying to join on another
 
     //the meat of Join
     TCB* runningThread = readyQueueHead;
+    if (readyQueueHead->next == NULL) {
+        //just in case line 275 doesn't catch it
+        return -1;
+    }
     readyQueueHead = readyQueueHead->next;
     runningThread->next = NULL;
     t->waitingThread = runningThread;
@@ -319,6 +373,10 @@ int thread_mutex_lock(thread_mutex_t *mutex){
         return 1;
     } else {
         TCB* blockedTCB = readyQueueHead;
+        if (readyQueueHead->next == NULL) {
+            //deadlock detected
+            return 0;
+        }
         readyQueueHead = readyQueueHead->next;
         blockedTCB->next = NULL;
         if (mutex->waitList == NULL){
@@ -370,10 +428,15 @@ int thread_cond_init(thread_cond_t *cond){
 }
 
 int thread_cond_wait(thread_cond_t *cond, thread_mutex_t *mutex) {
+    createMainThreadIfNeeded();
     if (mutex == NULL || cond == NULL) return 0;
     if (thread_mutex_unlock(mutex) == 0) return 0;
 
     TCB* blockingThread = readyQueueHead;
+    if (readyQueueHead->next == NULL){
+        //deadlock detected
+        return 0;
+    }
     readyQueueHead = readyQueueHead->next;
     blockingThread->next = NULL;
     blockingThread->condVarMutex = mutex;
@@ -389,6 +452,7 @@ int thread_cond_wait(thread_cond_t *cond, thread_mutex_t *mutex) {
 }
 
 int thread_cond_signal(thread_cond_t *cond){
+    createMainThreadIfNeeded();
     if (cond == NULL) return 0;
     if (cond->waitingThread == NULL) return 1;
 

@@ -86,6 +86,26 @@ void childThreadLocksAndReleases(void* arg) {
     printf("released the lock\n");
 }
 
+thread_cond_t testCond1;
+void childThreadWaitsForSignal(void* arg) {
+    thread_mutex_t* mu = (thread_mutex_t*) arg;
+    printf("thread %ld is locking on mutex %lx\n", thread_self(), (long) mu);
+    thread_mutex_lock(mu);
+    printf("thread %ld has the mutex, waiting for signal\n", thread_self());
+    thread_cond_wait(&testCond1, mu);
+    printf("thread %ld has received the signal. Unlocking...\n", thread_self());
+    thread_mutex_unlock(mu);
+}
+
+thread_mutex_t deadlock1;
+thread_mutex_t deadlock2;
+void childThreadAimsForDeadlock(void* arg) {
+    printf("child locking 2\n");
+    thread_mutex_lock(&deadlock2);
+    printf("child locking 1\n");
+    thread_mutex_lock(&deadlock1);
+}
+
 //test runner-------------------------------------
 int main(int argc, char** argv){
 
@@ -170,6 +190,7 @@ int main(int argc, char** argv){
         printf("main thread should wait for child to finish\n");
         thread_join(tid9);
         printf("execution passed back to main\n");
+        printTERs();
     } else if (testNum == 8) {
         long tid10 = thread_create(singleChildYieldsBeforeCompleting, NULL);
         long tid11 = thread_create(childThreadJoins, &tid10);
@@ -182,6 +203,7 @@ int main(int argc, char** argv){
         printf("first child thread should have ended and woken up 2nd child. Yield to it now...\n");
         thread_yield();
         printf("back to the main again. Test Over\n");
+        printTERs();
     } else if (testNum == 9) {
         long self = thread_self();
         printf("testing some join error conditions...\n");
@@ -197,6 +219,7 @@ int main(int argc, char** argv){
         long tid13 = thread_create(childThreadJoins, &self);
         thread_yield();
         printf("child thread should have had a join error of -2\nTest over.\n");
+        printTERs();
     } else if (testNum == 10) {
         thread_mutex_t mutex1, mutex2;
         int mu1 = thread_mutex_init(&mutex1);
@@ -205,6 +228,7 @@ int main(int argc, char** argv){
 
         printf("%lx -> %lx -> %lx\n", (long) &mutex1, (long) mutex1.nextMutex, (long) mutex1.nextMutex->nextMutex);
         printf("Statuses: %d, %d, %d\n", mu1, mu2, mu3);
+        printTERs();
 
     } else if (testNum == 11) {
         thread_mutex_t mu;
@@ -219,6 +243,7 @@ int main(int argc, char** argv){
         thread_mutex_unlock(&mu);
         thread_yield();
         printf("Execution returned to main. test over\n");
+        printTERs();
     } else if (testNum == 12) {
         long tid0 = thread_create(childSimplyYields, NULL);
         long tid1 = thread_create(childThreadJoins, &tid0);
@@ -228,6 +253,7 @@ int main(int argc, char** argv){
         int join = thread_join(tid3);
         thread_yield();
         printf("Main is back. join status: %d\n", join);
+        printTERs();
     } else if (testNum == 13) {
         thread_mutex_t mu1, mu2;
         thread_mutex_init(&mu1);
@@ -245,6 +271,40 @@ int main(int argc, char** argv){
         printf("3rd yield\n");
         thread_yield();
         printf("test over\n");
+        printTERs();
+    } else if (testNum == 14) {
+        thread_mutex_t mu;
+        thread_mutex_init(&mu);
+        thread_cond_init(&testCond1);
+        long tid1 = thread_create(childThreadWaitsForSignal, &mu);
+        printf("Thread 1: %ld\n", tid1);
+        thread_yield();
+        long tid2 = thread_create(childThreadWaitsForSignal, &mu);
+        printf("Thread 2: %ld\n", tid2);
+        thread_yield();
+        printf("Signalling...\n");
+        thread_cond_signal(&testCond1);
+        printf("Signalling again...\n");
+        thread_cond_signal(&testCond1);
+        printf("main will now wait for the kids finish up\n");
+        thread_join(tid2);
+        printf("test over\n");
+        printTERs();
+    } else if (testNum == 15) {
+        //trying to reproduce the professor's mutex deadlocking test
+        thread_mutex_init(&deadlock1);
+        thread_mutex_init(&deadlock2);
+        printf("parent locking 1\n");
+        thread_mutex_lock(&deadlock1);
+        printf("parent creating thread 1\n");
+        long tid1 = thread_create(childThreadAimsForDeadlock, NULL);
+        printf("parent yielding\n");
+        thread_yield();
+        printf("parent locking 2\n");
+        thread_mutex_lock(&deadlock2);
+        printf("now what?\n");
+        printTERs();
+
     }
     
     else {
