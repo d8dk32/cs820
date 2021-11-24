@@ -34,8 +34,34 @@ int memInitialize(unsigned long size){
     return 1;
 }
 
+int checkIfValueIsAllocatedBlockAddr(unsigned long value){
+    if (value < (unsigned long) heapBasePtr || value > (unsigned long) heapBasePtr + initializedSpace + 2){
+        //this address is outside the range of the heap so we can bail right now
 
-static unsigned long* findSpace( unsigned long size, long* startingPoint){
+        fprintf(stderr, "bailing asap\n");
+        return 0;
+    }
+
+    fprintf(stderr, "havnt bailed yet\n");
+    //next, check if the block it would point to is allocated or free
+    unsigned long* startingPoint = heapBasePtr;
+    while(startingPoint < heapBasePtr + initializedSpace) {
+        unsigned long curChunkSize = (*startingPoint & 0x1FFFFFFFFFFFFFFF); 
+        unsigned long curAllocBit = (*startingPoint & 0x8FFFFFFFFFFFFFFF) >> 63;
+
+        if (value >= (unsigned long) startingPoint && value <= (unsigned long) startingPoint+curChunkSize+2 && curAllocBit == 1) {
+            return 1;
+        }
+    
+        startingPoint += curChunkSize+2;
+    }
+
+    return 0;
+
+}
+
+
+static unsigned long* findSpace( unsigned long size, unsigned long* startingPoint){
 
     unsigned long curChunkSize = (*startingPoint & 0x1FFFFFFFFFFFFFFF);
     unsigned long curAllocBit = (*startingPoint & 0x8FFFFFFFFFFFFFFF) >> 63;
@@ -92,12 +118,18 @@ void *memAllocate(unsigned long size, void (*finalize)(void *)){
     unsigned long* blockBaseAddr = findSpace(size, heapBasePtr);
     if (blockBaseAddr != NULL) {
         *(blockBaseAddr+1) = (unsigned long) finalize;
-        return (void*) blockBaseAddr+2;
+        return blockBaseAddr+2;
     }
 
     collectGarbage();
 
-    return (void*) findSpace(size, heapBasePtr);
+    blockBaseAddr = findSpace(size, heapBasePtr);
+    if (blockBaseAddr != NULL) {
+        *(blockBaseAddr+1) = (unsigned long) finalize;
+        return blockBaseAddr+2;
+    }
+
+    return NULL;
 
 }
 
@@ -111,14 +143,32 @@ static void dumpHeap(void){
         unsigned long curAllocBit = (*startingPoint & 0x8FFFFFFFFFFFFFFF) >> 63;
         unsigned long curMarkBit = (*startingPoint & 0x8FFFFFFFFFFFFFFF) >> 62;
         
-        printf("Block - %ld allocated - %s - %s - %016lx\n", curChunkSize, 
-            curAllocBit==1 ? "Allocated":"Free", curMarkBit==1 ? "Marked":"Unmarked", (long) *(startingPoint+1) );
+        printf("\nBlock - %ld words - %s - %s ", curChunkSize, 
+            curAllocBit==1 ? "Allocated":"Free", curMarkBit==1 ? "Marked":"Unmarked");
+        if (curAllocBit == 1){
+            printf("- %016lx\n", (unsigned long) *(startingPoint+1));
+        } else {
+            printf("\n");
+        }
         
         if(curAllocBit == 1){
             //print contents of this chunk
+            for(unsigned long i = 0; i < curChunkSize; i++){
+                if(i%7 == 0){
+                    printf("\n 0x%016lx: ", (unsigned long) (startingPoint+2+i));
+                }
+                printf("%016lx", *(startingPoint+2+i));
+
+                if(checkIfValueIsAllocatedBlockAddr((unsigned long) *(startingPoint+2+i)) == 1){
+                    printf("* ");
+                } else {
+                    printf("  ");
+                }
+            }
+            printf("\n");
         }
 
-        startingPoint += curChunkSize+2;
+        startingPoint += curChunkSize+2UL;
 
     }
 }
