@@ -5,6 +5,10 @@
 extern unsigned long __data_start;
 extern unsigned long _end;
 
+extern unsigned long GC_get_rdi(void);
+extern unsigned long GC_get_rsi(void);
+extern unsigned long GC_get_rbx(void);
+
 static unsigned long initializedSpace = 0;
 
 static unsigned long* heapBasePtr;
@@ -151,6 +155,20 @@ static void dumpGlobalMem(void){
     printf("\n");
 }
 
+static void dumpRegisters(void){
+
+    unsigned long rdi = GC_get_rdi();
+    unsigned long rsi = GC_get_rsi();
+    unsigned long rbx = GC_get_rbx();
+
+    printf("Registers\n\n");
+    printf("rbx %016lx%s rsi %016lx%s rdi %016lx%s",
+        rbx, checkIfValueIsAllocatedBlockAddr(rbx) != NULL ? "*":" ",
+        rsi, checkIfValueIsAllocatedBlockAddr(rsi) != NULL ? "*":" ",
+        rdi, checkIfValueIsAllocatedBlockAddr(rdi) != NULL ? "*":" ");
+    printf("\n\n");
+}
+
 static void dumpHeap(void){
 
     printf("Heap - 2 word header:\n");
@@ -195,6 +213,7 @@ void memDump(void){
 
     dumpGlobalMem();
 
+    dumpRegisters();
 
     dumpHeap();
 
