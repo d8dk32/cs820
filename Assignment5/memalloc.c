@@ -2,12 +2,14 @@
 #include <stdio.h>
 #include "memalloc.h"
 
+extern unsigned long __data_start;
+extern unsigned long _end;
+
 static unsigned long initializedSpace = 0;
 
 static unsigned long* heapBasePtr;
 
 static int inFinalizeCall = 0;
-
 
 //[-][-][-][------------------------------------------------------------]
 // highest bit - allocated
@@ -34,23 +36,21 @@ int memInitialize(unsigned long size){
     return 1;
 }
 
-int checkIfValueIsAllocatedBlockAddr(unsigned long value){
+//returns 0 if the input addr doesn't point to an allocated block, and returns a pointer to the header
+// of the block that contains the input addr, if such a block exists
+unsigned long* checkIfValueIsAllocatedBlockAddr(unsigned long value){
     if (value < (unsigned long) heapBasePtr || value > (unsigned long) heapBasePtr + initializedSpace + 2){
         //this address is outside the range of the heap so we can bail right now
-
-        fprintf(stderr, "bailing asap\n");
         return 0;
     }
-
-    fprintf(stderr, "havnt bailed yet\n");
     //next, check if the block it would point to is allocated or free
     unsigned long* startingPoint = heapBasePtr;
-    while(startingPoint < heapBasePtr + initializedSpace) {
+    while((unsigned long) startingPoint < (unsigned long) (heapBasePtr + initializedSpace)) {
         unsigned long curChunkSize = (*startingPoint & 0x1FFFFFFFFFFFFFFF); 
         unsigned long curAllocBit = (*startingPoint & 0x8FFFFFFFFFFFFFFF) >> 63;
 
-        if (value >= (unsigned long) startingPoint && value <= (unsigned long) startingPoint+curChunkSize+2 && curAllocBit == 1) {
-            return 1;
+        if (value >= (unsigned long) startingPoint && value <= (unsigned long) (startingPoint+curChunkSize+2) && curAllocBit == 1) {
+            return startingPoint;
         }
     
         startingPoint += curChunkSize+2;
@@ -133,6 +133,24 @@ void *memAllocate(unsigned long size, void (*finalize)(void *)){
 
 }
 
+static void dumpGlobalMem(void){
+    unsigned long* globalMemStart = &__data_start;
+    unsigned long* globalMemEnd = &_end;
+
+    printf("Global Memory: start=0x%016lx, end=0x%016lx, length=%ld\n", 
+        (unsigned long) globalMemStart, 
+        (unsigned long) globalMemEnd, 
+        (unsigned long) (globalMemEnd-globalMemStart));
+    
+    for (unsigned long i = 0; i < (unsigned long) (globalMemEnd-globalMemStart); i++){
+        printf(" 0x%016lx %016lx%s\n", 
+            (unsigned long) (globalMemStart+i), 
+            (unsigned long) *(globalMemStart+i), 
+            checkIfValueIsAllocatedBlockAddr((unsigned long) *(globalMemStart+i)) != NULL ? "*":"");
+    }
+    printf("\n");
+}
+
 static void dumpHeap(void){
 
     printf("Heap - 2 word header:\n");
@@ -159,7 +177,7 @@ static void dumpHeap(void){
                 }
                 printf("%016lx", *(startingPoint+2+i));
 
-                if(checkIfValueIsAllocatedBlockAddr((unsigned long) *(startingPoint+2+i)) == 1){
+                if(checkIfValueIsAllocatedBlockAddr((unsigned long) *(startingPoint+2+i)) != NULL){
                     printf("* ");
                 } else {
                     printf("  ");
@@ -174,7 +192,9 @@ static void dumpHeap(void){
 }
 
 void memDump(void){
-    //just dumping the heap to start so I can see if memalloc works
+
+    dumpGlobalMem();
+
 
     dumpHeap();
 
