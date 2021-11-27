@@ -8,6 +8,8 @@ extern unsigned long _end;
 extern unsigned long GC_get_rdi(void);
 extern unsigned long GC_get_rsi(void);
 extern unsigned long GC_get_rbx(void);
+extern unsigned long GC_get_rsp(void);
+extern unsigned long GC_get_rbp(void);
 
 static unsigned long initializedSpace = 0;
 
@@ -155,6 +157,35 @@ static void dumpGlobalMem(void){
     printf("\n");
 }
 
+static void dumpStack(void){
+    unsigned long rsp = GC_get_rsp();
+    unsigned long rbp = GC_get_rbp();
+
+    unsigned long stackBottom = *((unsigned long*) rbp);
+    int bottomFound = 0;
+    while(bottomFound == 0){
+        unsigned long wouldBeBottom = *((unsigned long*) stackBottom);
+        if (wouldBeBottom < rsp) {
+            bottomFound = 1;
+        } else {
+            stackBottom = *((unsigned long*) stackBottom);
+        }
+    }
+
+    unsigned long stackLen = (unsigned long) ((unsigned long*) stackBottom - (unsigned long*) rsp);
+
+    printf("Stack Memory: start=%016lx, end=%016lx, length=%ld\n", rsp, stackBottom, stackLen);
+
+    for (unsigned long i = 0; i < stackLen; i++){
+        printf(" 0x%016lx %016lx%s\n", 
+            (unsigned long) ((unsigned long*) rsp+i), 
+            (unsigned long) *((unsigned long*)rsp+i), 
+            checkIfValueIsAllocatedBlockAddr( (unsigned long) *( (unsigned long*) rsp+i ) ) != NULL ? "*":"");
+    }
+    printf("\n");
+   
+}
+
 static void dumpRegisters(void){
 
     unsigned long rdi = GC_get_rdi();
@@ -212,6 +243,8 @@ static void dumpHeap(void){
 void memDump(void){
 
     dumpGlobalMem();
+
+    dumpStack();
 
     dumpRegisters();
 
