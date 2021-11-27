@@ -17,10 +17,9 @@ static unsigned long* heapBasePtr;
 
 static int inFinalizeCall = 0;
 
-//[-][-][-][------------------------------------------------------------]
+//[-][-][-------------------------------------------------------------]
 // highest bit - allocated
-// 2nd highest - mark for collection
-// 3rd highest - reachable, used to stop recursion during mark phase (don't forget to reset after sweep phase)
+// 2nd highest - mark as reachable
 //remaining bits - size of chunk
 
 int memInitialize(unsigned long size){
@@ -107,7 +106,71 @@ static void callDestructor(void (*finalize)(void *), long* blockBaseAddr){
     inFinalizeCall = 0;
 }
 
+static void traverseAndMarkGlobalMem(void){
+    unsigned long* globalMemStart = &__data_start;
+    unsigned long* globalMemEnd = &_end;
+    
+    for (unsigned long i = 0; i < (unsigned long) (globalMemEnd-globalMemStart); i++){
+        unsigned long* blockAddr = checkIfValueIsAllocatedBlockAddr((unsigned long) *(globalMemStart+i));
+        if (blockAddr != NULL){
+            //mark this block
+            *(blockAddr) = *(blockAddr) | 0x4000000000000000;
+        }
+    }
+}
+
+static void traverseAndMarkStack(void){
+    unsigned long rsp = GC_get_rsp();
+    unsigned long rbp = GC_get_rbp();
+
+    unsigned long stackBottom = *((unsigned long*) rbp);
+    int bottomFound = 0;
+    while(bottomFound == 0){
+        unsigned long wouldBeBottom = *((unsigned long*) stackBottom);
+        if (wouldBeBottom < rsp) {
+            bottomFound = 1;
+        } else {
+            stackBottom = *((unsigned long*) stackBottom);
+        }
+    }
+
+    unsigned long stackLen = (unsigned long) ((unsigned long*) stackBottom - (unsigned long*) rsp);
+
+    for (unsigned long i = 0; i < stackLen; i++){
+       unsigned long* blockAddr = checkIfValueIsAllocatedBlockAddr( (unsigned long) *( (unsigned long*) rsp+i ) );
+       if (blockAddr != NULL){
+            //mark this block
+            *(blockAddr) = *(blockAddr) | 0x4000000000000000;
+        }
+    }
+}
+
+static void checkAndMarkRegisters(void){
+    unsigned long rdi = GC_get_rdi();
+    unsigned long rsi = GC_get_rsi();
+    unsigned long rbx = GC_get_rbx();
+
+    if (checkIfValueIsAllocatedBlockAddr(rbx) != NULL){
+        *((unsigned long*) rbx)  = *((unsigned long*) rbx) | 0x4000000000000000;
+    }
+    if (checkIfValueIsAllocatedBlockAddr(rsi) != NULL){
+        *((unsigned long*) rsi)  = *((unsigned long*) rsi) | 0x4000000000000000;
+    }
+    if (checkIfValueIsAllocatedBlockAddr(rdi) != NULL){
+        *((unsigned long*) rdi)  = *((unsigned long*) rdi) | 0x4000000000000000;
+    }
+}
+
 static void collectGarbage(){
+    //step 1: traverse global mem and mark
+    traverseAndMarkGlobalMem();
+
+    //step 2: traverse and mark the stack
+    traverseAndMarkStack();
+
+    //step 3: check registers
+    checkAndMarkRegisters();
+
     return;
 }
 
@@ -208,7 +271,7 @@ static void dumpHeap(void){
     while(startingPoint < heapBasePtr + initializedSpace) {
         unsigned long curChunkSize = (*startingPoint & 0x1FFFFFFFFFFFFFFF);
         unsigned long curAllocBit = (*startingPoint & 0x8FFFFFFFFFFFFFFF) >> 63;
-        unsigned long curMarkBit = (*startingPoint & 0x8FFFFFFFFFFFFFFF) >> 62;
+        unsigned long curMarkBit = (*startingPoint & 0x4FFFFFFFFFFFFFFF) >> 62;
         
         printf("\nBlock - %ld words - %s - %s ", curChunkSize, 
             curAllocBit==1 ? "Allocated":"Free", curMarkBit==1 ? "Marked":"Unmarked");

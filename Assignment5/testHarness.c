@@ -25,6 +25,8 @@ int main(int argc, char** argv){
         *(a2 + 5) = (unsigned long) 0x1122334455667788;
         memAllocate(42, NULL);
 
+        memAllocate(100, NULL);
+
         memDump();
     }
 }
