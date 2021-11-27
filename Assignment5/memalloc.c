@@ -44,7 +44,7 @@ int memInitialize(unsigned long size){
 //returns 0 if the input addr doesn't point to an allocated block, and returns a pointer to the header
 // of the block that contains the input addr, if such a block exists
 unsigned long* checkIfValueIsAllocatedBlockAddr(unsigned long value){
-    if (value < (unsigned long) heapBasePtr || value > (unsigned long) heapBasePtr + initializedSpace + 2){
+    if (value < (unsigned long) heapBasePtr || value > (unsigned long) (heapBasePtr + initializedSpace + 2)){
         //this address is outside the range of the heap so we can bail right now
         return 0;
     }
@@ -161,6 +161,44 @@ static void checkAndMarkRegisters(void){
     }
 }
 
+static void recurseAndMarkHeap(unsigned long* startingPoint){
+    printf("recursing into block at %016lx\n", (unsigned long) startingPoint);
+    unsigned long curChunkSize = (*startingPoint & 0x1FFFFFFFFFFFFFFF);
+    unsigned long curAllocBit = (*startingPoint & 0x8FFFFFFFFFFFFFFF) >> 63;
+    unsigned long curMarkBit = (*startingPoint & 0x4FFFFFFFFFFFFFFF) >> 62;
+
+    for(unsigned long i = 0; i < curChunkSize+2; i++){
+        unsigned long ptrVal = *(startingPoint + i);
+        unsigned long* blockAddr = checkIfValueIsAllocatedBlockAddr(ptrVal);
+        if (blockAddr != NULL) printf("    found one @ %016lx\n", (unsigned long) blockAddr);
+        if (blockAddr != NULL && (*blockAddr & 0x4FFFFFFFFFFFFFFF) >> 62 == 0) { 
+            // if this mem addr points to an allocated, unmarked block,
+            //then mark it and recurse into it
+            *blockAddr = *blockAddr | 0x4000000000000000;
+            recurseAndMarkHeap(blockAddr);
+        }
+    }
+}
+
+static void traverseAndMarkHeap(void){
+    unsigned long* startingPoint = heapBasePtr;
+    printf("traversing heap\n");
+    while(startingPoint < heapBasePtr + initializedSpace) {
+        printf("top level block addr: %016lx\n", (unsigned long) startingPoint);
+        unsigned long curChunkSize = (*startingPoint & 0x1FFFFFFFFFFFFFFF);
+        unsigned long curAllocBit = (*startingPoint & 0x8FFFFFFFFFFFFFFF) >> 63;
+        unsigned long curMarkBit = (*startingPoint & 0x4FFFFFFFFFFFFFFF) >> 62;
+        
+        
+        if(curAllocBit == 1 && curMarkBit == 1){
+            recurseAndMarkHeap(startingPoint);
+        }
+
+        startingPoint += curChunkSize+2UL;
+
+    }
+}
+
 static void collectGarbage(){
     //step 1: traverse global mem and mark
     traverseAndMarkGlobalMem();
@@ -170,6 +208,9 @@ static void collectGarbage(){
 
     //step 3: check registers
     checkAndMarkRegisters();
+
+    //step 4: traverse the heap and mark
+    traverseAndMarkHeap();
 
     return;
 }

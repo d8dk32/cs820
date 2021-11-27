@@ -19,11 +19,15 @@ int main(int argc, char** argv){
         int init = memInitialize(100);
         unsigned long* allocated = memAllocate(20, fakeFinalizer);
 
-        *(allocated + 7) = (unsigned long) (allocated+7);
-
         unsigned long* a2 = memAllocate(10, NULL);
         *(a2 + 5) = (unsigned long) 0x1122334455667788;
-        memAllocate(42, NULL);
+        unsigned long* a3 = memAllocate(42, NULL);
+
+        *(allocated + 7) = (unsigned long) (allocated);
+        *(allocated + 8) = (unsigned long) (allocated + 7);
+
+        *(a3 + 20) = (unsigned long) (a2+3); 
+
 
         memAllocate(100, NULL);
 
