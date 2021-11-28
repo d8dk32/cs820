@@ -224,7 +224,33 @@ static void sweep(void){
 }
 
 static void consolidate(void){
+    //after marking and sweeping, a single forward pass is done to consolidate free chunks
+    unsigned long* startingPoint = heapBasePtr;
+    while(startingPoint < heapBasePtr + initializedSpace) {
+        unsigned long curChunkSize = (*startingPoint & 0x1FFFFFFFFFFFFFFF);
+        unsigned long curAllocBit = (*startingPoint & 0x8FFFFFFFFFFFFFFF) >> 63;
 
+        if (curAllocBit == 1) {
+            //this one isn't free so skip it
+            startingPoint += curChunkSize+2UL;
+        } else {
+
+            if ( startingPoint + curChunkSize + 2UL >= heapBasePtr + initializedSpace){
+                // current block is the last block, can't consolidate
+                return;
+            }
+            unsigned long* nextStartingPoint = startingPoint + curChunkSize + 2UL;
+            unsigned long nextChunkSize = (*nextStartingPoint & 0x1FFFFFFFFFFFFFFF);
+            unsigned long nextAllocBit = (*nextStartingPoint & 0x8FFFFFFFFFFFFFFF) >> 63;
+
+            if (nextAllocBit == 1) {
+                //next chunk isn't free, can't consolidate
+                startingPoint = nextStartingPoint;
+            } else {
+                *startingPoint = curChunkSize + nextChunkSize + 2UL;
+            }
+        }
+    }
 }
 
 static void collectGarbage(){
