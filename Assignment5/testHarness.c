@@ -3,7 +3,7 @@
 #include "memalloc.h"
 
 void fakeFinalizer(void* arg){
-    return;
+    printf("Fake finalizer\n");
 }
 
 int main(int argc, char** argv){
@@ -21,12 +21,14 @@ int main(int argc, char** argv){
 
         unsigned long* a2 = memAllocate(10, NULL);
         *(a2 + 5) = (unsigned long) 0x1122334455667788;
-        unsigned long* a3 = memAllocate(42, NULL);
+        unsigned long* a3 = memAllocate(42, fakeFinalizer);
 
         *(allocated + 7) = (unsigned long) (allocated);
         *(allocated + 8) = (unsigned long) (allocated + 7);
 
         *(a3 + 20) = (unsigned long) (a2+3); 
+
+        a3 = NULL;
 
 
         memAllocate(100, NULL);

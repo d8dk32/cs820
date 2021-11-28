@@ -100,9 +100,10 @@ static unsigned long* findSpace( unsigned long size, unsigned long* startingPoin
     }
 }
 
-static void callDestructor(void (*finalize)(void *), long* blockBaseAddr){
+static void callDestructor(void (*finalize)(void *), unsigned long* blockBaseAddr){
+    //printf("calling destructor %016lx with arg %016lx\n", (unsigned long) finalize, (unsigned long) blockBaseAddr);
     inFinalizeCall = 1;
-    finalize(blockBaseAddr);
+    //finalize(blockBaseAddr);
     inFinalizeCall = 0;
 }
 
@@ -146,6 +147,7 @@ static void traverseAndMarkStack(void){
 }
 
 static void checkAndMarkRegisters(void){
+
     unsigned long rdi = GC_get_rdi();
     unsigned long rsi = GC_get_rsi();
     unsigned long rbx = GC_get_rbx();
@@ -162,7 +164,7 @@ static void checkAndMarkRegisters(void){
 }
 
 static void recurseAndMarkHeap(unsigned long* startingPoint){
-    printf("recursing into block at %016lx\n", (unsigned long) startingPoint);
+
     unsigned long curChunkSize = (*startingPoint & 0x1FFFFFFFFFFFFFFF);
     unsigned long curAllocBit = (*startingPoint & 0x8FFFFFFFFFFFFFFF) >> 63;
     unsigned long curMarkBit = (*startingPoint & 0x4FFFFFFFFFFFFFFF) >> 62;
@@ -170,7 +172,7 @@ static void recurseAndMarkHeap(unsigned long* startingPoint){
     for(unsigned long i = 0; i < curChunkSize+2; i++){
         unsigned long ptrVal = *(startingPoint + i);
         unsigned long* blockAddr = checkIfValueIsAllocatedBlockAddr(ptrVal);
-        if (blockAddr != NULL) printf("    found one @ %016lx\n", (unsigned long) blockAddr);
+        
         if (blockAddr != NULL && (*blockAddr & 0x4FFFFFFFFFFFFFFF) >> 62 == 0) { 
             // if this mem addr points to an allocated, unmarked block,
             //then mark it and recurse into it
@@ -181,17 +183,40 @@ static void recurseAndMarkHeap(unsigned long* startingPoint){
 }
 
 static void traverseAndMarkHeap(void){
+
     unsigned long* startingPoint = heapBasePtr;
-    printf("traversing heap\n");
     while(startingPoint < heapBasePtr + initializedSpace) {
-        printf("top level block addr: %016lx\n", (unsigned long) startingPoint);
         unsigned long curChunkSize = (*startingPoint & 0x1FFFFFFFFFFFFFFF);
         unsigned long curAllocBit = (*startingPoint & 0x8FFFFFFFFFFFFFFF) >> 63;
         unsigned long curMarkBit = (*startingPoint & 0x4FFFFFFFFFFFFFFF) >> 62;
         
-        
         if(curAllocBit == 1 && curMarkBit == 1){
             recurseAndMarkHeap(startingPoint);
+        }
+
+        startingPoint += curChunkSize+2UL;
+
+    }
+}
+
+static void sweep(void){
+    unsigned long* startingPoint = heapBasePtr;
+    while(startingPoint < heapBasePtr + initializedSpace) {
+        unsigned long curChunkSize = (*startingPoint & 0x1FFFFFFFFFFFFFFF);
+        unsigned long curAllocBit = (*startingPoint & 0x8FFFFFFFFFFFFFFF) >> 63;
+        unsigned long curMarkBit = (*startingPoint & 0x4FFFFFFFFFFFFFFF) >> 62;
+        
+        if(curAllocBit == 1 && curMarkBit == 0){ //allocated, but not marked as reachable
+            //finalize
+            if (*(startingPoint+1) != 0){
+                callDestructor((void (*)(void *)) (startingPoint+1), startingPoint+2);
+            }
+
+            //mark as free
+            *startingPoint = *startingPoint & 0x7FFFFFFFFFFFFFFF;
+        } else if (curAllocBit == 1 && curMarkBit == 1) {
+            //just unset the mark bit
+            *startingPoint = *startingPoint & 0xBFFFFFFFFFFFFFFF;
         }
 
         startingPoint += curChunkSize+2UL;
@@ -211,6 +236,11 @@ static void collectGarbage(){
 
     //step 4: traverse the heap and mark
     traverseAndMarkHeap();
+
+    //step 5: the sweep phase
+    sweep();
+
+    //step 6: consolidate free sections
 
     return;
 }
