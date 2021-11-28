@@ -101,9 +101,8 @@ static unsigned long* findSpace( unsigned long size, unsigned long* startingPoin
 }
 
 static void callDestructor(void (*finalize)(void *), unsigned long* blockBaseAddr){
-    //printf("calling destructor %016lx with arg %016lx\n", (unsigned long) finalize, (unsigned long) blockBaseAddr);
     inFinalizeCall = 1;
-    //finalize(blockBaseAddr);
+    finalize(blockBaseAddr);
     inFinalizeCall = 0;
 }
 
@@ -209,7 +208,7 @@ static void sweep(void){
         if(curAllocBit == 1 && curMarkBit == 0){ //allocated, but not marked as reachable
             //finalize
             if (*(startingPoint+1) != 0){
-                callDestructor((void (*)(void *)) (startingPoint+1), startingPoint+2);
+                callDestructor((void (*)(void *)) *(startingPoint+1), startingPoint+2);
             }
 
             //mark as free
@@ -222,6 +221,10 @@ static void sweep(void){
         startingPoint += curChunkSize+2UL;
 
     }
+}
+
+static void consolidate(void){
+
 }
 
 static void collectGarbage(){
@@ -241,6 +244,7 @@ static void collectGarbage(){
     sweep();
 
     //step 6: consolidate free sections
+    consolidate();
 
     return;
 }
