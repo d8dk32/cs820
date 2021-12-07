@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include "memalloc.h"
+#include "alloc.h"
 
 extern unsigned long __data_start;
 extern unsigned long _end;
@@ -165,8 +165,8 @@ static void checkAndMarkRegisters(void){
 static void recurseAndMarkHeap(unsigned long* startingPoint){
 
     unsigned long curChunkSize = (*startingPoint & 0x1FFFFFFFFFFFFFFF);
-    unsigned long curAllocBit = (*startingPoint & 0x8FFFFFFFFFFFFFFF) >> 63;
-    unsigned long curMarkBit = (*startingPoint & 0x4FFFFFFFFFFFFFFF) >> 62;
+    //unsigned long curAllocBit = (*startingPoint & 0x8FFFFFFFFFFFFFFF) >> 63;
+    //unsigned long curMarkBit = (*startingPoint & 0x4FFFFFFFFFFFFFFF) >> 62;
 
     for(unsigned long i = 0; i < curChunkSize+2; i++){
         unsigned long ptrVal = *(startingPoint + i);
@@ -414,5 +414,6 @@ void memDump(void){
 
     dumpHeap();
 
+    printf("\n");
 
 }
